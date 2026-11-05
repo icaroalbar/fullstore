@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(go test *)",
+      "Bash(go mod *)",
+      "Bash(git commit -m 'test\\(product\\): T001 PR-01,PR-02 validação de nome e preço \\(testes vermelhos\\) *)",
+      "Bash(go get *)",
+      "Bash(git commit -m 'feat\\(product\\): T001 implementa NewProduct com validações PR-01,PR-02 *)",
+      "Bash(git commit -m 'test\\(product\\): T002 PR-03 ativação e desativação \\(testes vermelhos\\) *)"
+    ]
+  }
+}
