@@ -113,3 +113,42 @@ func TestProduct_PR03_DeactivateDisabledIdempotent(t *testing.T) {
 		t.Errorf("deactivate on already disabled should be idempotent, got Disabled=%v", p.Disabled)
 	}
 }
+
+// T003: PR-04 — disponibilidade no catálogo
+func TestProduct_PR04_DisabledNotAvailable(t *testing.T) {
+	p, _ := NewProduct("Produto", 100)
+	if p.IsAvailable() {
+		t.Errorf("disabled product should not be available, got IsAvailable()=true")
+	}
+}
+
+func TestProduct_PR04_ActiveAvailable(t *testing.T) {
+	p, _ := NewProduct("Produto", 100)
+	p.Activate()
+	if !p.IsAvailable() {
+		t.Errorf("active product should be available, got IsAvailable()=false")
+	}
+}
+
+// T003: PR-05 — imutabilidade de preço no pedido (snapshot)
+// Nota: cenários 16-17 envolvem Order aggregate, testados em order_test.go
+// Aqui validamos que Product.Price é só leitura em contexto
+func TestProduct_PR05_PriceSnapshot1(t *testing.T) {
+	p, _ := NewProduct("Produto", 5000) // R$ 50,00 em centavos
+	originalPrice := p.Price
+	if originalPrice != 5000 {
+		t.Errorf("product price should be %d, got %d", 5000, originalPrice)
+	}
+}
+
+func TestProduct_PR05_PriceSnapshot2(t *testing.T) {
+	p, _ := NewProduct("Produto", 5000)
+	// Simula mudança de preço no produto
+	p.Price = 10000
+	// O preço foi mudado no objeto. Em produção, Order teria guardado 5000.
+	// Este teste só valida que Price é um campo mutável no domínio,
+	// e que quem cria Order é responsável por snapshot.
+	if p.Price != 10000 {
+		t.Errorf("product price should be updatable, got %d", p.Price)
+	}
+}

@@ -40,17 +40,19 @@ func NewProduct(name string, price int64) (*Product, error) {
 
 // Activate ativa o produto se preço > 0 (PR-03).
 func (p *Product) Activate() error {
-	// TODO: Implementar
-	return errors.New("not implemented")
+	if p.Price <= 0 {
+		return ErrInvalidPrice
+	}
+	p.Disabled = false
+	return nil
 }
 
 // Deactivate desativa o produto (idempotente, PR-03).
 func (p *Product) Deactivate() {
-	// TODO: Implementar
+	p.Disabled = true
 }
 
 // IsAvailable retorna true se o produto não está desativado (PR-04).
 func (p *Product) IsAvailable() bool {
-	// TODO: Implementar
-	return false
+	return !p.Disabled
 }
