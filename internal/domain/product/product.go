@@ -1,0 +1,43 @@
+package product
+
+import (
+	"errors"
+	"time"
+)
+
+var (
+	ErrInvalidName  = errors.New("invalid product name: must be 3-100 characters")
+	ErrInvalidPrice = errors.New("invalid product price: must be greater than zero")
+)
+
+type Product struct {
+	ID       string
+	Name     string
+	Price    int64 // em centavos, BRL
+	Disabled bool
+	CreatedAt time.Time
+}
+
+// NewProduct cria um novo produto com validações PR-01 e PR-02.
+// O produto nasce desativado (disabled = true).
+func NewProduct(name string, price int64) (*Product, error) {
+	// TODO: Implementar validações PR-01 e PR-02
+	return nil, errors.New("not implemented")
+}
+
+// Activate ativa o produto se preço > 0 (PR-03).
+func (p *Product) Activate() error {
+	// TODO: Implementar
+	return errors.New("not implemented")
+}
+
+// Deactivate desativa o produto (idempotente, PR-03).
+func (p *Product) Deactivate() {
+	// TODO: Implementar
+}
+
+// IsAvailable retorna true se o produto não está desativado (PR-04).
+func (p *Product) IsAvailable() bool {
+	// TODO: Implementar
+	return false
+}
