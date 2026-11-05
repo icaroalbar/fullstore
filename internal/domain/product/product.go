@@ -3,6 +3,7 @@ package product
 import (
 	"errors"
 	"time"
+	"github.com/google/uuid"
 )
 
 var (
@@ -21,8 +22,20 @@ type Product struct {
 // NewProduct cria um novo produto com validações PR-01 e PR-02.
 // O produto nasce desativado (disabled = true).
 func NewProduct(name string, price int64) (*Product, error) {
-	// TODO: Implementar validações PR-01 e PR-02
-	return nil, errors.New("not implemented")
+	if len(name) < 3 || len(name) > 100 {
+		return nil, ErrInvalidName
+	}
+	if price <= 0 {
+		return nil, ErrInvalidPrice
+	}
+
+	return &Product{
+		ID:        uuid.New().String(),
+		Name:      name,
+		Price:     price,
+		Disabled:  true,
+		CreatedAt: time.Now(),
+	}, nil
 }
 
 // Activate ativa o produto se preço > 0 (PR-03).

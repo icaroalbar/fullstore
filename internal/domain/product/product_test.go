@@ -66,3 +66,50 @@ func TestProduct_PR02_ValidPrice(t *testing.T) {
 		t.Errorf("valid price 100 should not error, got %v", err)
 	}
 }
+
+// T002: PR-03 — ativação e desativação
+func TestProduct_PR03_StartsDisabled(t *testing.T) {
+	p, _ := NewProduct("Produto", 100)
+	if !p.Disabled {
+		t.Errorf("new product should be disabled, got Disabled=%v", p.Disabled)
+	}
+}
+
+func TestProduct_PR03_ActivateWithValidPrice(t *testing.T) {
+	p, _ := NewProduct("Produto", 100)
+	err := p.Activate()
+	if err != nil {
+		t.Errorf("activate with valid price should not error, got %v", err)
+	}
+	if p.Disabled {
+		t.Errorf("after activate, Disabled should be false, got %v", p.Disabled)
+	}
+}
+
+func TestProduct_PR03_ActivateRequiresValidPrice(t *testing.T) {
+	// Cria produto com preço válido, depois tenta ativar com preço inválido
+	p, _ := NewProduct("Produto", 100)
+	p.Price = 0 // torna preço inválido
+	err := p.Activate()
+	if err != ErrInvalidPrice {
+		t.Errorf("activate with invalid price should return ErrInvalidPrice, got %v", err)
+	}
+}
+
+func TestProduct_PR03_DeactivateActive(t *testing.T) {
+	p, _ := NewProduct("Produto", 100)
+	p.Activate()
+	p.Deactivate()
+	if !p.Disabled {
+		t.Errorf("after deactivate, Disabled should be true, got %v", p.Disabled)
+	}
+}
+
+func TestProduct_PR03_DeactivateDisabledIdempotent(t *testing.T) {
+	p, _ := NewProduct("Produto", 100)
+	// já está disabled
+	p.Deactivate()
+	if !p.Disabled {
+		t.Errorf("deactivate on already disabled should be idempotent, got Disabled=%v", p.Disabled)
+	}
+}
