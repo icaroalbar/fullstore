@@ -1,0 +1,24 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - depguard
+    - errcheck
+    - gocyclo
+    - govet
+    - revive
+    - staticcheck
+  settings:
+    gocyclo:
+      min-complexity: 15
+    depguard:
+      rules:
+        domain-isolado:
+          files:
+            - "**/internal/domain/**"
+          deny:
+            - pkg: github.com/icaroalbar/fullstore/internal/usecase
+              desc: internal/domain não pode depender de usecase (ver CLAUDE.md)
+            - pkg: github.com/icaroalbar/fullstore/internal/infra
+              desc: internal/domain não pode depender de infra (ver CLAUDE.md)
