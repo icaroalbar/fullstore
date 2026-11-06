@@ -9,6 +9,12 @@ O que construir está em `docs/prd.md`; como trabalhar está em `docs/specs/READ
 - Cada decisão explicada comparando com OO: struct+métodos = classes, interfaces implícitas = duck typing, composição = herança.
 - Código diverge da spec? Pare e pergunte.
 
+## Branches e PRs
+- **develop**: integradora; branches de trabalho saem daqui (`docs/spec-NNN-...`, `feat/...`)
+- **main**: apenas merges de develop ao fechar uma etapa (com tag, ex: `v1.0`)
+- **Fluxo**: tarefa em branch → PR para develop (nunca push direto) → CI verde → merge
+- Nunca push direto em develop ou main (sempre via PR)
+
 ## Arquitetura
 - `internal/domain` não importa nada de `usecase` nem `infra` (o depguard barra).
 - `internal/usecase` depende de interfaces (portas) declaradas por ele.
