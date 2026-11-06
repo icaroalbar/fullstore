@@ -1,3 +1,4 @@
+// Package product defines the Product aggregate root for the domain.
 package product
 
 import (
@@ -9,7 +10,9 @@ import (
 )
 
 var (
-	ErrInvalidName  = errors.New("invalid product name: must be 3-100 characters (UTF-8)")
+	// ErrInvalidName is returned when product name is not 3-100 UTF-8 characters.
+	ErrInvalidName = errors.New("invalid product name: must be 3-100 characters (UTF-8)")
+	// ErrInvalidPrice is returned when product price is not greater than zero.
 	ErrInvalidPrice = errors.New("invalid product price: must be greater than zero")
 )
 
