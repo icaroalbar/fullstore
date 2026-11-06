@@ -45,6 +45,7 @@ Cada regra tem um ID que vai para a spec, para o nome do teste e para a mensagem
 | PR-03 | Produto nasce desativado e só ativa com preço válido | Novo produto tem status disabled |
 | PR-04 | Produto desativado não aparece no catálogo nem entra em pedido | Pedido com produto desativado retorna ErrProductUnavailable |
 | PR-05 | Mudar o preço não altera pedidos já criados | Pedido guarda o preço unitário do momento da compra |
+| PR-06 | Alterar o preço (ChangePrice) aplica a mesma validação da PR-02; só é possível por esse método | ChangePrice(0) retorna ErrInvalidPrice e o preço anterior continua igual |
 
 ### Pedido
 
