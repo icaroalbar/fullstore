@@ -2,10 +2,10 @@
 
 Status: aprovada
 Etapa: 1
-Regras cobertas: PR-01, PR-02, PR-03, PR-04, PR-05
+Regras cobertas: PR-01, PR-02, PR-03, PR-04, PR-05, PR-06
 
 ## Contexto
-O Produto é a entidade central do catálogo. Nasce desativado (draft) até ter um preço válido, e só pode ser comprado quando ativo. O domínio valida nome, preço e transições de status. Quando um produto muda de preço, pedidos já criados mantêm o preço do momento da compra (imutabilidade).
+O Produto é a entidade central do catálogo. Nasce desativado (draft) até ter um preço válido, e só pode ser comprado quando ativo. O domínio valida nome, preço e transições de status. Mudanças de preço só ocorrem via método ChangePrice (validado), e pedidos já criados mantêm o preço do momento da compra (imutabilidade).
 
 ## Comportamento esperado
 **Criação:**
@@ -37,11 +37,16 @@ O Produto é a entidade central do catálogo. Nasce desativado (draft) até ter 
 - Cenário 16: Dado um pedido com 1 item a R$ 50, quando mudo o preço do produto para R$ 100, então o pedido continua com R$ 50.
 - Cenário 17: Dado um pedido criado, então seu preço unitário é snapshot do momento (não segue mudanças futuras do produto).
 
+**Alterar preço com validação (PR-06):**
+- Cenário 18: Dado um produto com preço R$ 50, quando chamo ChangePrice(100), então o preço muda para R$ 100 e retorna sucesso.
+- Cenário 19: Dado um produto com preço R$ 50, quando chamo ChangePrice(0), então retorna `ErrInvalidPrice` e o preço continua R$ 50.
+- Cenário 20: Dado um produto com preço R$ 50, quando chamo ChangePrice(-50), então retorna `ErrInvalidPrice` e o preço continua R$ 50.
+
 ## Casos de erro
 | Situação | Erro esperado |
 | --- | --- |
 | Nome vazio ou fora de 3-100 caracteres | `ErrInvalidName` |
-| Preço ≤ 0 | `ErrInvalidPrice` |
+| Preço ≤ 0 (NewProduct ou ChangePrice) | `ErrInvalidPrice` |
 | Tentar usar produto disabled em pedido | `ErrProductUnavailable` |
 | Tentar ativar sem preço válido | `ErrInvalidPrice` |
 
