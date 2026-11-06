@@ -56,3 +56,12 @@ func (p *Product) Deactivate() {
 func (p *Product) IsAvailable() bool {
 	return !p.Disabled
 }
+
+// ChangePrice altera o preço com validação PR-02/PR-06.
+func (p *Product) ChangePrice(newPrice int64) error {
+	if newPrice <= 0 {
+		return ErrInvalidPrice
+	}
+	p.Price = newPrice
+	return nil
+}

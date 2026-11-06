@@ -152,3 +152,37 @@ func TestProduct_PR05_PriceSnapshot2(t *testing.T) {
 		t.Errorf("product price should be updatable, got %d", p.Price)
 	}
 }
+
+// T003+: PR-06 — alterar preço com validação
+func TestProduct_PR06_ChangePriceValid(t *testing.T) {
+	p, _ := NewProduct("Produto", 5000) // R$ 50,00
+	err := p.ChangePrice(10000)         // R$ 100,00
+	if err != nil {
+		t.Errorf("ChangePrice(10000) should not error, got %v", err)
+	}
+	if p.Price != 10000 {
+		t.Errorf("after ChangePrice(10000), Price should be 10000, got %d", p.Price)
+	}
+}
+
+func TestProduct_PR06_ChangePriceZero(t *testing.T) {
+	p, _ := NewProduct("Produto", 5000)
+	err := p.ChangePrice(0)
+	if err != ErrInvalidPrice {
+		t.Errorf("ChangePrice(0) should return ErrInvalidPrice, got %v", err)
+	}
+	if p.Price != 5000 {
+		t.Errorf("after ChangePrice(0) error, Price should remain 5000, got %d", p.Price)
+	}
+}
+
+func TestProduct_PR06_ChangePriceNegative(t *testing.T) {
+	p, _ := NewProduct("Produto", 5000)
+	err := p.ChangePrice(-100)
+	if err != ErrInvalidPrice {
+		t.Errorf("ChangePrice(-100) should return ErrInvalidPrice, got %v", err)
+	}
+	if p.Price != 5000 {
+		t.Errorf("after ChangePrice(-100) error, Price should remain 5000, got %d", p.Price)
+	}
+}

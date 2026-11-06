@@ -9,3 +9,6 @@ github.com/icaro-albar/fullstore/internal/domain/product/product.go:44.3,45.1 1 
 github.com/icaro-albar/fullstore/internal/domain/product/product.go:46.2,47.12 2 1
 github.com/icaro-albar/fullstore/internal/domain/product/product.go:52.2,53.1 1 1
 github.com/icaro-albar/fullstore/internal/domain/product/product.go:57.2,58.1 1 1
+github.com/icaro-albar/fullstore/internal/domain/product/product.go:62.2,62.19 1 1
+github.com/icaro-albar/fullstore/internal/domain/product/product.go:63.3,64.1 1 1
+github.com/icaro-albar/fullstore/internal/domain/product/product.go:65.2,66.12 2 1
