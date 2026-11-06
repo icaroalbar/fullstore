@@ -9,6 +9,18 @@ import (
 	"github.com/google/uuid"
 )
 
+// Status represents an order's state.
+type Status string
+
+const (
+	// StatusPending order awaiting payment.
+	StatusPending Status = "pending"
+	// StatusPaid order payment confirmed.
+	StatusPaid Status = "paid"
+	// StatusCanceled order canceled by customer or expired.
+	StatusCanceled Status = "canceled"
+)
+
 var (
 	// ErrEmptyOrder returned when creating order with zero items.
 	ErrEmptyOrder = errors.New("order must have at least 1 item")
@@ -16,6 +28,10 @@ var (
 	ErrTooManyItems = errors.New("order cannot have more than 20 items")
 	// ErrInvalidQuantity returned when item quantity is not 1-10.
 	ErrInvalidQuantity = errors.New("item quantity must be between 1 and 10")
+	// ErrInvalidPrice returned when item price is <= 0.
+	ErrInvalidPrice = errors.New("item price must be greater than zero")
+	// ErrDuplicateItem returned when two items have the same ProductID.
+	ErrDuplicateItem = errors.New("duplicate product in order")
 	// ErrInvalidTransition returned on invalid order status change.
 	ErrInvalidTransition = errors.New("invalid order status transition")
 	// ErrProductUnavailable returned when product is disabled or missing.
@@ -35,8 +51,8 @@ type Item struct {
 type Order struct {
 	id        string
 	items     []Item
-	status    string // "pending", "paid", "canceled"
-	total     int64  // centavos
+	status    Status
+	total     int64 // centavos
 	createdAt time.Time
 	paidAt    *time.Time
 	expiredAt *time.Time
@@ -54,8 +70,8 @@ func (o *Order) Items() []Item {
 	return itemsCopy
 }
 
-// Status returns the current status ("pending", "paid", or "canceled").
-func (o *Order) Status() string {
+// Status returns the current status (pending, paid, or canceled).
+func (o *Order) Status() Status {
 	return o.status
 }
 
@@ -79,9 +95,9 @@ func (o *Order) ExpiredAt() *time.Time {
 	return o.expiredAt
 }
 
-// NewOrder cria um novo pedido com validações PE-01 e PE-02.
-// O pedido nasce com status "pending".
-func NewOrder(items []Item) (*Order, error) {
+// NewOrder cria um novo pedido com validações PE-01, PE-02, e verificações.
+// O pedido nasce com status pending. now é injetado para testes.
+func NewOrder(items []Item, now time.Time) (*Order, error) {
 	// PE-01: validar quantidade de itens (1-20)
 	if len(items) == 0 {
 		return nil, ErrEmptyOrder
@@ -90,32 +106,40 @@ func NewOrder(items []Item) (*Order, error) {
 		return nil, ErrTooManyItems
 	}
 
-	// PE-02: validar quantidade por item (1-10)
-	for _, item := range items {
+	// Copiar slice de entrada (defensive copy)
+	itemsCopy := make([]Item, len(items))
+	copy(itemsCopy, items)
+
+	// Rastrear ProductIDs vistos para detectar duplicatas
+	seen := make(map[string]bool)
+
+	// PE-02: validar quantidade por item (1-10), preço > 0, e duplicatas
+	for _, item := range itemsCopy {
 		if item.Quantity < 1 || item.Quantity > 10 {
 			return nil, ErrInvalidQuantity
 		}
+		if item.Price <= 0 {
+			return nil, ErrInvalidPrice
+		}
+		if seen[item.ProductID] {
+			return nil, ErrDuplicateItem
+		}
+		seen[item.ProductID] = true
 	}
 
 	// PE-03: calcular total (soma de preço × quantidade)
 	total := int64(0)
-	for _, item := range items {
+	for _, item := range itemsCopy {
 		total += item.Price * int64(item.Quantity)
 	}
 
 	return &Order{
 		id:        uuid.New().String(),
-		items:     items,
-		status:    "pending",
+		items:     itemsCopy,
+		status:    StatusPending,
 		total:     total,
-		createdAt: time.Now(),
+		createdAt: now,
 	}, nil
-}
-
-// CalculateTotal retorna a soma de (preço × quantidade) para todos os itens.
-func (o *Order) CalculateTotal() int64 {
-	// TODO: Implementar
-	return 0
 }
 
 // Pay transiciona status de "pending" para "paid" (PE-04).
