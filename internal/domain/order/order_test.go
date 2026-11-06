@@ -102,3 +102,82 @@ func TestOrder_PE01_HasCreatedAt(t *testing.T) {
 		t.Errorf("order CreatedAt should be around now, got %v", o.CreatedAt())
 	}
 }
+
+// T001+: Getters protection — Items() retorna cópia, não referência
+func TestOrder_ItemsReturnsCopy(t *testing.T) {
+	originalItems := []Item{
+		{ProductID: "p1", Quantity: 2, Price: 100},
+		{ProductID: "p2", Quantity: 1, Price: 200},
+	}
+	o, _ := NewOrder(originalItems)
+	originalTotal := o.Total()
+
+	// Pega os itens via getter
+	retrievedItems := o.Items()
+
+	// Altera o slice retornado
+	retrievedItems[0].Price = 9999
+
+	// Confirma que o pedido não mudou
+	if o.Total() != originalTotal {
+		t.Errorf("altering returned Items slice should not change Order.Total(), got %d, want %d", o.Total(), originalTotal)
+	}
+
+	// Pega items novamente e confirma que tem 2 (não 3)
+	itemsAgain := o.Items()
+	if len(itemsAgain) != 2 {
+		t.Errorf("order should still have 2 items, got %d", len(itemsAgain))
+	}
+	if itemsAgain[0].Price != 100 {
+		t.Errorf("order's first item price should still be 100, got %d", itemsAgain[0].Price)
+	}
+}
+
+// T001+: Getters — Total, Status, ID
+func TestOrder_GetterID(t *testing.T) {
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items)
+	if o.ID() == "" {
+		t.Errorf("ID() should not be empty")
+	}
+	// ID deve ser UUID-like (36 chars com hífens)
+	if len(o.ID()) != 36 {
+		t.Errorf("ID() should be UUID format (36 chars), got %d", len(o.ID()))
+	}
+}
+
+func TestOrder_GetterTotal(t *testing.T) {
+	items := []Item{
+		{ProductID: "p1", Quantity: 2, Price: 100}, // 200
+		{ProductID: "p2", Quantity: 3, Price: 150}, // 450
+	}
+	o, _ := NewOrder(items)
+	expectedTotal := int64(200 + 450)
+	if o.Total() != expectedTotal {
+		t.Errorf("Total() should be %d, got %d", expectedTotal, o.Total())
+	}
+}
+
+func TestOrder_GetterStatus(t *testing.T) {
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items)
+	if o.Status() != "pending" {
+		t.Errorf("Status() should be 'pending', got %q", o.Status())
+	}
+}
+
+func TestOrder_GetterPaidAtNil(t *testing.T) {
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items)
+	if o.PaidAt() != nil {
+		t.Errorf("PaidAt() should be nil for new order, got %v", o.PaidAt())
+	}
+}
+
+func TestOrder_GetterExpiredAtNil(t *testing.T) {
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items)
+	if o.ExpiredAt() != nil {
+		t.Errorf("ExpiredAt() should be nil for new order, got %v", o.ExpiredAt())
+	}
+}
