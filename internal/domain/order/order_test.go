@@ -317,7 +317,9 @@ func TestOrder_PE04_InvalidTransitionPayPaid(t *testing.T) {
 	o, _ := NewOrder(items, time.Now())
 	now := time.Now()
 
-	o.Pay(now)
+	if err := o.Pay(now); err != nil {
+		t.Errorf("first Pay should not error, got %v", err)
+	}
 	err := o.Pay(now)
 	if err != ErrInvalidTransition {
 		t.Errorf("Pay on paid should return ErrInvalidTransition, got %v", err)
@@ -342,7 +344,9 @@ func TestOrder_PE05_InvalidTransitionCancelPaid(t *testing.T) {
 	o, _ := NewOrder(items, time.Now())
 	now := time.Now()
 
-	o.Pay(now)
+	if err := o.Pay(now); err != nil {
+		t.Errorf("Pay should not error, got %v", err)
+	}
 	err := o.Cancel()
 	if err != ErrInvalidTransition {
 		t.Errorf("Cancel on paid should return ErrInvalidTransition, got %v", err)
@@ -396,7 +400,9 @@ func TestOrder_PE06_ExpireIdempotent(t *testing.T) {
 	o, _ := NewOrder(items, createdAt)
 
 	now := createdAt.Add(31 * time.Minute)
-	o.Expire(now)
+	if err := o.Expire(now); err != nil {
+		t.Errorf("first Expire should not error, got %v", err)
+	}
 
 	// Chamar Expire novamente deve ser idempotente
 	err := o.Expire(now)
