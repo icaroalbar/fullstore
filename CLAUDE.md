@@ -5,8 +5,8 @@ O que construir está em `docs/prd.md`; como trabalhar está em `docs/specs/READ
 
 ## Como trabalhar
 - Siga o fluxo SDD: spec -> plano -> tarefas -> código. Sem spec aprovada, não escreva código de produção.
-- O código de domínio é escrito pelo Icaro. Você revisa, explica e propõe testes.
-- Explique idiomas de Go comparando com OO (struct+métodos, interfaces implícitas, composição).
+- Por enquanto, o Claude implementa todo o código, inclusive o domínio. O Icaro aprova specs e revisa diffs.
+- Cada decisão explicada comparando com OO: struct+métodos = classes, interfaces implícitas = duck typing, composição = herança.
 - Código diverge da spec? Pare e pergunte.
 
 ## Arquitetura
@@ -26,4 +26,4 @@ O que construir está em `docs/prd.md`; como trabalhar está em `docs/specs/READ
 ## Skills
 - `nova-spec`: criar a spec de uma funcionalidade.
 - `planejar-spec`: gerar plano e tarefas de uma spec aprovada.
-- `implementar-tarefa`: escrever o teste vermelho da próxima tarefa e esperar o Icaro implementar.
+- `implementar-tarefa`: escrever teste vermelho, implementar até verde, rodar `make check`, mostrar diff com explicação de cada decisão (comparando com OO).
