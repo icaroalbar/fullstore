@@ -293,3 +293,117 @@ func TestOrder_PE03_TotalImmutable(t *testing.T) {
 		t.Errorf("order total should be immutable, got %d, want %d", o.Total(), originalTotal)
 	}
 }
+
+// T003: PE-04, PE-05 — transições de status
+func TestOrder_PE04_PayPending(t *testing.T) {
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, time.Now())
+	now := time.Date(2025, 6, 15, 11, 0, 0, 0, time.UTC)
+
+	err := o.Pay(now)
+	if err != nil {
+		t.Errorf("Pay on pending should not error, got %v", err)
+	}
+	if o.Status() != StatusPaid {
+		t.Errorf("after Pay, status should be paid, got %v", o.Status())
+	}
+	if o.PaidAt() == nil || *o.PaidAt() != now {
+		t.Errorf("PaidAt should be set to now, got %v", o.PaidAt())
+	}
+}
+
+func TestOrder_PE04_InvalidTransitionPayPaid(t *testing.T) {
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, time.Now())
+	now := time.Now()
+
+	o.Pay(now)
+	err := o.Pay(now)
+	if err != ErrInvalidTransition {
+		t.Errorf("Pay on paid should return ErrInvalidTransition, got %v", err)
+	}
+}
+
+func TestOrder_PE05_CancelPending(t *testing.T) {
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, time.Now())
+
+	err := o.Cancel()
+	if err != nil {
+		t.Errorf("Cancel on pending should not error, got %v", err)
+	}
+	if o.Status() != StatusCanceled {
+		t.Errorf("after Cancel, status should be canceled, got %v", o.Status())
+	}
+}
+
+func TestOrder_PE05_InvalidTransitionCancelPaid(t *testing.T) {
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, time.Now())
+	now := time.Now()
+
+	o.Pay(now)
+	err := o.Cancel()
+	if err != ErrInvalidTransition {
+		t.Errorf("Cancel on paid should return ErrInvalidTransition, got %v", err)
+	}
+}
+
+// T004: PE-06 — expiração (30 minutos)
+func TestOrder_PE06_IsExpiredAt29Minutes(t *testing.T) {
+	createdAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, createdAt)
+
+	now := createdAt.Add(29 * time.Minute)
+	if o.IsExpired(now) {
+		t.Errorf("order should NOT be expired at 29 minutes, got true")
+	}
+}
+
+func TestOrder_PE06_IsExpiredAt31Minutes(t *testing.T) {
+	createdAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, createdAt)
+
+	now := createdAt.Add(31 * time.Minute)
+	if !o.IsExpired(now) {
+		t.Errorf("order should be expired at 31 minutes, got false")
+	}
+}
+
+func TestOrder_PE06_ExpireTransitionsToCanceled(t *testing.T) {
+	createdAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, createdAt)
+
+	now := createdAt.Add(31 * time.Minute)
+	err := o.Expire(now)
+	if err != nil {
+		t.Errorf("Expire on expired order should not error, got %v", err)
+	}
+	if o.Status() != StatusCanceled {
+		t.Errorf("after Expire, status should be canceled, got %v", o.Status())
+	}
+	if o.ExpiredAt() == nil || *o.ExpiredAt() != now {
+		t.Errorf("ExpiredAt should be set to now, got %v", o.ExpiredAt())
+	}
+}
+
+func TestOrder_PE06_ExpireIdempotent(t *testing.T) {
+	createdAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, createdAt)
+
+	now := createdAt.Add(31 * time.Minute)
+	o.Expire(now)
+
+	// Chamar Expire novamente deve ser idempotente
+	err := o.Expire(now)
+	if err != nil {
+		t.Errorf("second Expire should not error, got %v", err)
+	}
+	if o.Status() != StatusCanceled {
+		t.Errorf("status should remain canceled, got %v", o.Status())
+	}
+}

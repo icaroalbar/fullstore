@@ -143,25 +143,42 @@ func NewOrder(items []Item, now time.Time) (*Order, error) {
 }
 
 // Pay transiciona status de "pending" para "paid" (PE-04).
-func (o *Order) Pay() error {
-	// TODO: Implementar
-	return errors.New("not implemented")
+func (o *Order) Pay(now time.Time) error {
+	if o.status != StatusPending {
+		return ErrInvalidTransition
+	}
+	o.status = StatusPaid
+	o.paidAt = &now
+	return nil
 }
 
 // Cancel transiciona status de "pending" para "canceled" (PE-05).
 func (o *Order) Cancel() error {
-	// TODO: Implementar
-	return errors.New("not implemented")
+	if o.status != StatusPending {
+		return ErrInvalidTransition
+	}
+	o.status = StatusCanceled
+	return nil
 }
 
 // IsExpired retorna true se o pedido é pending e passou de 30 minutos (PE-06).
-func (o *Order) IsExpired() bool {
-	// TODO: Implementar
-	return false
+func (o *Order) IsExpired(now time.Time) bool {
+	if o.status != StatusPending {
+		return false
+	}
+	return now.Sub(o.createdAt) > 30*time.Minute
 }
 
 // Expire muda o status para "canceled" se expirado (PE-06).
-func (o *Order) Expire() error {
-	// TODO: Implementar
-	return errors.New("not implemented")
+func (o *Order) Expire(now time.Time) error {
+	// Idempotente: se já estiver canceled, apenas retorna sucesso
+	if o.status == StatusCanceled {
+		return nil
+	}
+	if o.status != StatusPending {
+		return ErrInvalidTransition
+	}
+	o.status = StatusCanceled
+	o.expiredAt = &now
+	return nil
 }
