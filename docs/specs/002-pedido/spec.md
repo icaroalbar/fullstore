@@ -1,6 +1,6 @@
 # Spec 002: Pedido (Order)
 
-Status: rascunho
+Status: aprovada
 Etapa: 1
 Regras cobertas: PE-01, PE-02, PE-03, PE-04, PE-05, PE-06
 
