@@ -254,3 +254,42 @@ func TestOrder_StatusIsConstant(t *testing.T) {
 		t.Errorf("new order status should be StatusPending, got %v", o.Status())
 	}
 }
+
+// T002: PE-03 — cálculo e imutabilidade de total
+func TestOrder_PE03_SingleItemTotal(t *testing.T) {
+	items := []Item{
+		{ProductID: "p1", Quantity: 2, Price: 5000}, // 2 × 5000 = 10000
+	}
+	o, _ := NewOrder(items, time.Now())
+	if o.Total() != 10000 {
+		t.Errorf("total for 1 item should be 10000, got %d", o.Total())
+	}
+}
+
+func TestOrder_PE03_MultipleItemsTotal(t *testing.T) {
+	items := []Item{
+		{ProductID: "p1", Quantity: 1, Price: 3000}, // 3000
+		{ProductID: "p2", Quantity: 2, Price: 5000}, // 10000
+		{ProductID: "p3", Quantity: 3, Price: 2000}, // 6000
+	}
+	o, _ := NewOrder(items, time.Now())
+	expectedTotal := int64(3000 + 10000 + 6000)
+	if o.Total() != expectedTotal {
+		t.Errorf("total should be %d, got %d", expectedTotal, o.Total())
+	}
+}
+
+func TestOrder_PE03_TotalImmutable(t *testing.T) {
+	items := []Item{
+		{ProductID: "p1", Quantity: 1, Price: 5000},
+	}
+	o, _ := NewOrder(items, time.Now())
+	originalTotal := o.Total()
+
+	// Muda preço do item original (não deveria afetar o pedido)
+	items[0].Price = 10000
+
+	if o.Total() != originalTotal {
+		t.Errorf("order total should be immutable, got %d, want %d", o.Total(), originalTotal)
+	}
+}
