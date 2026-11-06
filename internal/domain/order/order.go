@@ -34,8 +34,10 @@ var (
 	ErrDuplicateItem = errors.New("duplicate product in order")
 	// ErrInvalidTransition returned on invalid order status change.
 	ErrInvalidTransition = errors.New("invalid order status transition")
-	// ErrProductUnavailable returned when product is disabled or missing.
-	ErrProductUnavailable = errors.New("product is not available")
+	// ErrOrderExpired returned when trying to pay an expired order.
+	ErrOrderExpired = errors.New("order has expired")
+	// ErrNotExpired returned when trying to expire an order that has not yet expired.
+	ErrNotExpired = errors.New("order has not expired yet")
 )
 
 // Item is a value object representing a line item in an order.
@@ -147,6 +149,9 @@ func (o *Order) Pay(now time.Time) error {
 	if o.status != StatusPending {
 		return ErrInvalidTransition
 	}
+	if o.IsExpired(now) {
+		return ErrOrderExpired
+	}
 	o.status = StatusPaid
 	o.paidAt = &now
 	return nil
@@ -177,6 +182,9 @@ func (o *Order) Expire(now time.Time) error {
 	}
 	if o.status != StatusPending {
 		return ErrInvalidTransition
+	}
+	if !o.IsExpired(now) {
+		return ErrNotExpired
 	}
 	o.status = StatusCanceled
 	o.expiredAt = &now

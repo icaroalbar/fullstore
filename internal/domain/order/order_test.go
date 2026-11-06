@@ -413,3 +413,27 @@ func TestOrder_PE06_ExpireIdempotent(t *testing.T) {
 		t.Errorf("status should remain canceled, got %v", o.Status())
 	}
 }
+
+func TestOrder_PE06_ExpireAt29MinutesReturnsError(t *testing.T) {
+	createdAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, createdAt)
+
+	now := createdAt.Add(29 * time.Minute)
+	err := o.Expire(now)
+	if err != ErrNotExpired {
+		t.Errorf("Expire at 29 minutes should return ErrNotExpired, got %v", err)
+	}
+}
+
+func TestOrder_PE04_PayExpiredOrderReturnsError(t *testing.T) {
+	createdAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, createdAt)
+
+	now := createdAt.Add(31 * time.Minute)
+	err := o.Pay(now)
+	if err != ErrOrderExpired {
+		t.Errorf("Pay on expired order should return ErrOrderExpired, got %v", err)
+	}
+}
