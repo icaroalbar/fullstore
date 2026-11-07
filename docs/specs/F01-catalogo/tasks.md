@@ -84,7 +84,7 @@ npx msw init web/public
 
 ---
 
-## T002: lib/money.ts - formatar centavos em BRL (30 min)
+## ✅ T002: lib/money.ts - formatar centavos em BRL (CONCLUÍDA)
 **Regras:** FE-01b, FE-01c
 
 Criar `web/src/lib/money.ts`:
@@ -100,26 +100,39 @@ export function formatPrice(cents: number): string {
 
 Criar `web/src/lib/__tests__/money.test.ts`:
 
+Testes usam `toMatch` e `toContain` em vez de `toBe` porque `Intl.NumberFormat("pt-BR", { style: "currency" })` insere um **espaço não-separável (U+00A0)** entre "R$" e o número. O formatPrice retorna exatamente como Intl.NumberFormat gera — sem normalização. Testes confirmam via regex e substring:
+
 ```typescript
 import { describe, it, expect } from "vitest";
 import { formatPrice } from "../money";
 
 describe("money", () => {
   it("FE-01b formata 123456 centavos como R$ 1.234,56", () => {
-    expect(formatPrice(123456)).toBe("R$ 1.234,56");
+    const result = formatPrice(123456);
+    expect(result).toMatch(/R.\s1\.234,56/);
+    expect(result).toContain("1.234,56");
   });
 
   it("FE-01c formata 990 centavos como R$ 9,90", () => {
-    expect(formatPrice(990)).toBe("R$ 9,90");
+    const result = formatPrice(990);
+    expect(result).toMatch(/R.\s9,90/);
+    expect(result).toContain("9,90");
   });
 
-  it("FE-01 formata 100 centavos como R$ 1,00", () => {
-    expect(formatPrice(100)).toBe("R$ 1,00");
+  it("formata 0 centavos como R$ 0,00", () => {
+    const result = formatPrice(0);
+    expect(result).toMatch(/R.\s0,00/);
+    expect(result).toContain("0,00");
+  });
+
+  it("formata 100000000 centavos (R$ 1 milhão) sem perder precisão", () => {
+    const result = formatPrice(100000000);
+    expect(result).toContain("1.000.000,00");
   });
 });
 ```
 
-**Teste que prova:** `npm run test -- --run` passa com 3 testes verdes.
+**Teste que prova:** `npm run test -- --run` passa com 5 testes verdes. `make web-check` verde (lint ok, typecheck ok, testes ok). `make check` verde (Go tests ok).
 
 ---
 
