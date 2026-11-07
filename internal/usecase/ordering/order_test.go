@@ -1,6 +1,7 @@
 package ordering
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -11,10 +12,10 @@ import (
 // T002: Portas e erros do caso de uso
 func TestOrderUseCases_ConstructorAndFakes(t *testing.T) {
 	// Fakes
-	catalogFake := &ProductCatalogFake{}
-	orderRepoFake := &OrderRepositoryFake{}
-	inventoryFake := &InventoryPortFake{}
-	clockFake := &ClockFake{now: time.Now()}
+	catalogFake := NewProductCatalogFake()
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	clockFake := NewClockFake(time.Now())
 
 	// Constructor should succeed
 	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
@@ -23,90 +24,76 @@ func TestOrderUseCases_ConstructorAndFakes(t *testing.T) {
 	}
 }
 
-// Fake implementations
-type ProductCatalogFake struct {
-	products map[string]*Product
-	err      error
+// Testes dos fakes (validam comportamentos críticos)
+func TestInventoryPortFake_ReserveTudoOuNada(t *testing.T) {
+	fake := NewInventoryPortFake()
+	fake.SetStock("p1", 10)
+	fake.SetStock("p2", 5)
+
+	items := []stock.Item{
+		{ProductID: "p1", Quantity: 10},
+		{ProductID: "p2", Quantity: 10}, // Não há 10 de p2
+	}
+
+	err := fake.Reserve(items)
+	if err != stock.ErrInsufficientStock {
+		t.Errorf("Reserve should fail, got %v", err)
+	}
+
+	// Verificar que nada foi reservado (tudo ou nada)
+	s1 := fake.GetStock("p1")
+	s2 := fake.GetStock("p2")
+	if s1 != 10 || s2 != 5 {
+		t.Errorf("Reserve falhou e não deve ter alterado nada; p1=%d (esperado 10), p2=%d (esperado 5)", s1, s2)
+	}
 }
 
-func (f *ProductCatalogFake) Get(productID string) (*Product, error) {
-	if f.err != nil {
-		return nil, f.err
+func TestOrderRepositoryFake_UpdateRetornaErro(t *testing.T) {
+	fake := NewOrderRepositoryFake()
+	o, _ := order.NewOrder(
+		[]order.Item{{ProductID: "p1", Quantity: 1, Price: 100}},
+		time.Now(),
+	)
+	_ = fake.Save(o)
+
+	// Update que retorna erro sem alterar nada
+	err := fake.Update(o.ID(), func(_ *order.Order) error {
+		return errors.New("test error")
+	})
+
+	if err == nil {
+		t.Errorf("Update com erro deveria retornar erro")
 	}
-	if p, ok := f.products[productID]; ok {
-		return p, nil
+
+	// Recuperar a ordem e verificar que status não foi alterado pela função
+	recovered, _ := fake.GetForTest(o.ID())
+	if recovered.Status() != order.StatusPending {
+		t.Errorf("Order status deveria ser pending; status=%v", recovered.Status())
 	}
-	return nil, ErrProductNotFound
 }
 
-type OrderRepositoryFake struct {
-	orders map[string]*order.Order
-	err    error
+func TestOrderRepositoryFake_SaveNaoPanic(t *testing.T) {
+	fake := NewOrderRepositoryFake()
+	o, _ := order.NewOrder(
+		[]order.Item{{ProductID: "p1", Quantity: 1, Price: 100}},
+		time.Now(),
+	)
+
+	// Save não deve dar panic
+	err := fake.Save(o)
+	if err != nil {
+		t.Errorf("Save should not error, got %v", err)
+	}
 }
 
-func (f *OrderRepositoryFake) Save(o *order.Order) error {
-	if f.err != nil {
-		return f.err
-	}
-	f.orders[o.ID()] = o
-	return nil
-}
+func TestInventoryPortFake_ReturnNaoPanic(t *testing.T) {
+	fake := NewInventoryPortFake()
+	fake.SetStock("p1", 10)
 
-func (f *OrderRepositoryFake) Update(orderID string, fn func(*order.Order) error) error {
-	if f.err != nil {
-		return f.err
+	// Return não deve dar panic
+	items := []stock.Item{{ProductID: "p1", Quantity: 1}}
+	err := fake.Return(items)
+	if err != nil {
+		t.Errorf("Return should not error, got %v", err)
 	}
-	if o, ok := f.orders[orderID]; ok {
-		return fn(o)
-	}
-	return ErrOrderNotFound
-}
-
-func (f *OrderRepositoryFake) ListPending() ([]*order.Order, error) {
-	if f.err != nil {
-		return nil, f.err
-	}
-	result := make([]*order.Order, 0)
-	for _, o := range f.orders {
-		if o.Status() == order.StatusPending {
-			result = append(result, o)
-		}
-	}
-	return result, nil
-}
-
-type InventoryPortFake struct {
-	stock map[string]int64
-	err   error
-}
-
-func (f *InventoryPortFake) Reserve(items []stock.Item) error {
-	if f.err != nil {
-		return f.err
-	}
-	for _, item := range items {
-		if available, ok := f.stock[item.ProductID]; !ok || available < int64(item.Quantity) {
-			return stock.ErrInsufficientStock
-		}
-		f.stock[item.ProductID] -= int64(item.Quantity)
-	}
-	return nil
-}
-
-func (f *InventoryPortFake) Return(items []stock.Item) error {
-	if f.err != nil {
-		return f.err
-	}
-	for _, item := range items {
-		f.stock[item.ProductID] += int64(item.Quantity)
-	}
-	return nil
-}
-
-type ClockFake struct {
-	now time.Time
-}
-
-func (f *ClockFake) Now() time.Time {
-	return f.now
 }

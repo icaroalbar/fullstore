@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/icaroalbar/fullstore/internal/domain/order"
+	"github.com/icaroalbar/fullstore/internal/domain/product"
 	"github.com/icaroalbar/fullstore/internal/domain/stock"
 )
 
@@ -24,14 +25,7 @@ type ItemInput struct {
 
 // ProductCatalog is a port for fetching products from the catalog.
 type ProductCatalog interface {
-	Get(productID string) (*Product, error) // ErrProductNotFound
-}
-
-// Product represents a product in the catalog with pricing and availability.
-type Product struct {
-	ID     string
-	Active bool
-	Price  int64 // centavos
+	Get(productID string) (*product.Product, error) // ErrProductNotFound
 }
 
 // OrderRepository is a port for persisting and retrieving orders.
