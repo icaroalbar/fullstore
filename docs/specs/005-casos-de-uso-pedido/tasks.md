@@ -5,9 +5,10 @@
 **O quê:** Pré-requisito de Spec 005. Order.Expire (em domain/order/order.go) era idempotente. Mudar para retornar `ErrInvalidTransition` se o pedido não estiver pending. Impede Return duplicado em ExpirarPedidos.
 
 **Critério de aceite:**
-- [ ] `TestOrder_PE06_ExpireNotPendingReturnsError` — Expire em pedido não pending retorna ErrInvalidTransition (não nil)
-- [ ] Spec 002 (docs/specs/002-pedido/spec.md) atualizada: PE-06 documenta novo comportamento
-- [ ] `make check` passa
+- [x] `TestOrder_PE06_ExpireNotPendingReturnsError` — Expire em pedido não pending retorna ErrInvalidTransition (não nil)
+- [x] `TestOrder_PE06_ExpireOnPaidOrderReturnsError` — Expire em pedido paid retorna ErrInvalidTransition
+- [x] Spec 002 (docs/specs/002-pedido/spec.md) atualizada: PE-06 documenta novo comportamento
+- [x] `make check` passa
 
 **Arquivo:** `internal/domain/order/order.go` + `order_test.go` + `docs/specs/002-pedido/spec.md`
 
@@ -15,17 +16,18 @@
 
 ## T002: Portas e erros do caso de uso (ES-01, ES-02, ES-03)
 
-**O quê:** Struct `OrderUseCases`, construtor, injeção de 4 portas (ProductCatalog, OrderRepository, InventoryPort, Clock). Erros em var block. Adaptadores falsos (fakes) nos testes.
+**O quê:** Struct `OrderUseCases`, construtor, injeção de 4 portas (ProductCatalog, OrderRepository, InventoryPort, Clock). Erros em var block. Adaptadores falsos (fakes) nos testes com thread-safety.
 
 **Critério de aceite:**
-- [ ] `internal/usecase/ordering/order.go` criado com construtor
-- [ ] Portas: ProductCatalog, OrderRepository (*order.Order), InventoryPort, Clock
-- [ ] Erros em var: ErrProductNotFound, ErrProductUnavailable, ErrOrderNotFound
-- [ ] ItemInput struct: ProductID, Quantity
-- [ ] Fakes completos para todas as portas (ProductCatalogFake, OrderRepositoryFake, InventoryPortFake, ClockFake)
-- [ ] `make check` passa
+- [x] `internal/usecase/ordering/order.go` criado com construtor
+- [x] Portas: ProductCatalog (*product.Product), OrderRepository (*order.Order), InventoryPort, Clock
+- [x] Erros em var: ErrProductNotFound, ErrProductUnavailable, ErrOrderNotFound
+- [x] ItemInput struct: ProductID, Quantity (int32)
+- [x] Fakes em `fakes_test.go`: ProductCatalogFake, OrderRepositoryFake, InventoryPortFake, ClockFake com mutex
+- [x] Testes dos fakes: Reserve tudo-ou-nada, Update transacional, Save/Return sem panic
+- [x] `make check` passa (100% cobertura)
 
-**Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
+**Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go` + `fakes_test.go`
 
 ---
 

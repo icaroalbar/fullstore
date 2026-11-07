@@ -416,6 +416,29 @@ func TestOrder_PE06_ExpireNotPendingReturnsError(t *testing.T) {
 	}
 }
 
+func TestOrder_PE06_ExpireOnPaidOrderReturnsError(t *testing.T) {
+	createdAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
+	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
+	o, _ := NewOrder(items, createdAt)
+
+	// Pay the order
+	now := createdAt.Add(1 * time.Minute)
+	if err := o.Pay(now); err != nil {
+		t.Errorf("Pay should not error, got %v", err)
+	}
+
+	// Try to expire a paid order
+	expireTime := createdAt.Add(31 * time.Minute)
+	err := o.Expire(expireTime)
+	if err != ErrInvalidTransition {
+		t.Errorf("Expire on paid order should return ErrInvalidTransition, got %v", err)
+	}
+	// Verify status remains paid
+	if o.Status() != StatusPaid {
+		t.Errorf("status should remain paid, got %v", o.Status())
+	}
+}
+
 func TestOrder_PE06_ExpireAt29MinutesReturnsError(t *testing.T) {
 	createdAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
 	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
