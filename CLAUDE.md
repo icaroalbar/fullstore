@@ -21,7 +21,7 @@ O que construir está em `docs/prd.md`; como trabalhar está em `docs/specs/READ
 - `internal/infra` implementa as portas (HTTP, Postgres, Redis).
 
 ## Convenções
-- Dinheiro em centavos (`int64`). Erros de domínio como variáveis `Err...` no pacote domain.
+- Dinheiro em centavos (`int64`). Erros de domínio como variáveis `Err...` em bloco `var` no topo do arquivo principal do agregado (order.go, product.go, inventory.go).
 - Testes nomeados com o ID da regra: `TestOrder_PE02_...`
 - Commits: `feat(order): PE-02 limita quantidade por item`.
 
