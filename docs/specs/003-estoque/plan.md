@@ -6,12 +6,11 @@ Spec: ./spec.md
 
 - **internal/domain/stock**: Agregado Inventory (mapa productID → {disponível, reservado}) com Reserve, Return, Deduct, Replenish, getters
 - **internal/domain/stock/errors.go**: ErrInsufficientStock, ErrInvalidQuantity, ErrProductNotFound, ErrInvalidOperation
-- **internal/infra/stock**: Repositório Inventory (em memória na etapa 1; Postgres na etapa 2+)
 
 ## Tipos e interfaces
 
 ```go
-// domain/stock/inventory.go
+// domain/stock/inventory.go + inventory_test.go
 type Inventory struct {
   stocks map[string]*productStock // productID -> {disponível, reservado}
   mu     sync.Mutex

@@ -11,7 +11,7 @@
 - [ ] `TestInventory_GetterProductNotFound` — Available("unknown") retorna ErrProductNotFound
 - [ ] `TestInventory_GettersUseLock` — getters adquirem lock (verificar -race)
 
-**Arquivo:** `internal/domain/stock/inventory.go` + `stock_test.go` + `errors.go`
+**Arquivo:** `internal/domain/stock/inventory.go` + `inventory_test.go` + `errors.go`
 
 ---
 
@@ -27,7 +27,7 @@
 - [ ] `TestInventory_ReserveProductRepetition` — Reserve([{p1,2}, {p1,3}]) soma para 5 antes de validar
 - [ ] `TestInventory_ES02b_AtomicFail` — Reserve([{p1,3}, {p2,15}]) com p2=10 → nada é reservado (tudo-ou-nada)
 
-**Arquivo:** `internal/domain/stock/inventory.go` + `stock_test.go`
+**Arquivo:** `internal/domain/stock/inventory.go` + `inventory_test.go`
 
 ---
 
@@ -39,12 +39,17 @@
 - [ ] `TestInventory_ES03a_ReturnAfterCancel` — Reserve([{p1,3}]), depois Return([{p1,3}]) → available=10, reserved=0
 - [ ] `TestInventory_ES03b_ReturnAfterExpire` — mesmo resultado
 - [ ] `TestInventory_ReturnInvalidQuantity` — Return com qty ≤ 0 → ErrInvalidQuantity
+- [ ] `TestInventory_ReturnProductNotFound` — Return([{unknown, 1}]) → ErrProductNotFound
 - [ ] `TestInventory_ReturnTooMuch` — Return([{p1,5}]) quando reserved=3 → ErrInvalidOperation, nada muda
+- [ ] `TestInventory_ReturnProductRepetition` — Return([{p1,2}, {p1,3}]) soma para 5 antes de validar
 - [ ] `TestInventory_ReturnAtomicFail` — Return([{p1,3}, {p2,15}]) com p2 reserved=10 → tudo-ou-nada, nada muda
 - [ ] `TestInventory_ES04_DeductAfterPay` — Reserve([{p1,3}]) → available=7,reserved=3; Deduct([{p1,3}]) → available=7,reserved=0
+- [ ] `TestInventory_DeductInvalidQuantity` — Deduct com qty ≤ 0 → ErrInvalidQuantity
+- [ ] `TestInventory_DeductProductNotFound` — Deduct([{unknown, 1}]) → ErrProductNotFound
+- [ ] `TestInventory_DeductProductRepetition` — Deduct([{p1,2}, {p1,3}]) soma para 5 antes de validar
 - [ ] `TestInventory_DeductInvalidOperation` — Deduct([{p1,5}]) quando reserved=3 → ErrInvalidOperation
 
-**Arquivo:** `internal/domain/stock/inventory.go` + `stock_test.go`
+**Arquivo:** `internal/domain/stock/inventory.go` + `inventory_test.go`
 
 ---
 

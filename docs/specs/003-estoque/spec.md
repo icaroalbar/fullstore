@@ -6,7 +6,7 @@ Regras cobertas: ES-01, ES-02, ES-03, ES-04, ES-05
 
 ## Contexto
 
-Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobrevenda. Stock é um agregado separado de Product: cada estoque rastreia um produto via seu ID e mantém duas quantidades: disponível (pode vender agora) e reservado (em pedidos pending). Estoque inicial entra via Replenish. Quando o pedido é pago, a reserva vira baixa definitiva. Se o pedido expira ou é cancelado, a reserva volta.
+Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobrevenda. Inventory é um agregado centralizado que rastreia estoque de vários produtos via um mapa (productID → {disponível, reservado}). Estoque inicial entra via Replenish. Quando o pedido é pago, a reserva vira baixa definitiva. Se o pedido expira ou é cancelado, a reserva volta.
 
 ## Comportamento esperado
 
@@ -24,10 +24,14 @@ Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobre
 | --- | --- |
 | Reserve: item sem estoque suficiente (soma de quantidade) | ErrInsufficientStock |
 | Reserve: quantidade <= 0 em qualquer item | ErrInvalidQuantity |
+| Reserve: produto não encontrado no inventário | ErrProductNotFound |
 | Return: devolver mais do que foi reservado | ErrInvalidOperation |
+| Return: quantidade <= 0 em qualquer item | ErrInvalidQuantity |
+| Return: produto não encontrado no inventário | ErrProductNotFound |
 | Deduct: baixar mais do que foi reservado | ErrInvalidOperation |
+| Deduct: quantidade <= 0 em qualquer item | ErrInvalidQuantity |
+| Deduct: produto não encontrado no inventário | ErrProductNotFound |
 | Replenish: quantidade <= 0 | ErrInvalidQuantity |
-| Qualquer operação com produto não encontrado | ErrProductNotFound |
 
 ## Decisões de design
 
@@ -36,7 +40,7 @@ Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobre
 - **Tudo ou nada**: Reserve valida todos os itens do pedido antes de mudar qualquer quantidade
   - Se um item faltar, nenhum é reservado
   - Responsabilidade: use case Order passa todos os itens de uma vez
-- **Produto repetido no pedido**: Se o mesmo produto aparece múltiplas vezes, soma as quantidades antes de validar
+- **Produto repetido em qualquer operação**: Reserve, Return, Deduct — se o mesmo produto aparece múltiplas vezes, soma as quantidades antes de validar
 - **Validações**: quantidade <= 0 retorna erro antes de qualquer mudança
 
 ## Operações de Stock
