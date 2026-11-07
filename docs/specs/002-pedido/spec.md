@@ -37,6 +37,7 @@ O Pedido (Order) é o aggregate root que agrupa itens (OrderItem), cada um refer
 - Cenário 18: Dado pedido `pending` criado há 29 min, quando verifico status, então continua `pending`.
 - Cenário 19: Dado pedido `pending` criado há 31 min, quando verifico IsExpired(), então retorna true.
 - Cenário 20: Dado pedido `pending` criado há 31 min, quando chamo Expire(), então status muda para `canceled`.
+- Cenário 20b: Dado pedido já `canceled`, quando chamo Expire() novamente, então retorna `ErrInvalidTransition` (não idempotente).
 
 ## Casos de erro
 | Situação | Erro esperado |
