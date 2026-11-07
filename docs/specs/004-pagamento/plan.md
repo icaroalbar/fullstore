@@ -5,8 +5,6 @@ Spec: ./spec.md
 ## Onde mora o código
 
 - **internal/domain/payment**: Agregado OrderPayments (validação, controle de aprovação, histórico)
-- **internal/usecase/payment**: Orquestração (chamar gateway, decidir order.Pay())
-- **internal/infra/payment**: Adaptador do gateway (falso para testes)
 
 ## Tipos e interfaces
 
@@ -28,7 +26,7 @@ type OrderPayments struct {
 
 func NewOrderPayments(orderID string, total int64) (*OrderPayments, error)
 func (op *OrderPayments) RecordAttempt(amount int64, result PaymentStatus) error
-func (op *OrderPayments) Approved() *PaymentAttempt
+func (op *OrderPayments) Approved() (PaymentAttempt, bool)
 func (op *OrderPayments) Attempts() []PaymentAttempt
 
 // Erros
@@ -36,6 +34,7 @@ var (
   ErrAlreadyPaid = errors.New("...")
   ErrAmountMismatch = errors.New("...")
   ErrInvalidAmount = errors.New("...")
+  ErrInvalidResult = errors.New("...")
 )
 ```
 
@@ -44,7 +43,7 @@ var (
 | Decisão | Alternativa descartada | Motivo |
 | --- | --- | --- |
 | **Ordem: ErrAlreadyPaid antes de ErrAmountMismatch** | Validar amount antes | Falha rápida: já aprovado é mais crítico; economiza processamento |
-| **Mutex em memória (etapa 1)** | Pessimistic lock no banco | Monolito; etapa 2+ migra para banco |
+| **Mutex em memória (etapa 1)** | Pessimistic lock no banco | Monolito; etapa 2+ migra para banco com SELECT...FOR UPDATE |
 | **OrderPayments sem orderID em RecordAttempt** | Receber cada vez | Imutável; reduz acoplamento |
 | **Item do pacote, sem importar order** | Ref. a Order | Desacoplamento: payment só conhece IDs/valores |
 | **Erros em var block no agregado** | Arquivo separado | Padrão: order.go, product.go, inventory.go |
@@ -52,9 +51,9 @@ var (
 ### Comparação com OO
 
 Java: `synchronized` implícito no monitor do objeto.
-Go: `sync.Mutex` + `defer` explícito. Receiver ponteiro garante concorrência segura sem importar order = maior desacoplamento que Java.
+Go: `sync.Mutex` + `defer` explícito. Receiver ponteiro garante concorrência segura.
 
 ## Riscos
 
-- **PG-02 com 2 aprovações simultâneas:** Duas goroutines escrevem approved. Mitigado por mutex; etapa 3+ (K8s) precisa pessimistic lock. Teste com -race validará.
+- **PG-02 com 2 aprovações simultâneas:** Duas goroutines escrevem approved. Mitigado por mutex; etapa 2+ (múltiplas instâncias) precisa pessimistic lock. Teste com -race validará.
 - **Concorrência entre validação e aplicação:** Mutex serializa; sem window.

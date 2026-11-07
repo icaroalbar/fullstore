@@ -29,6 +29,7 @@ Um pedido pending precisa ser pago para virar paid. O cliente pode tentar pagar 
 | Valor do pagamento ≠ total do pedido | `ErrAmountMismatch` |
 | Valor do pagamento ≤ 0 | `ErrInvalidAmount` |
 | Registrar pagamento quando já há um aprovado | `ErrAlreadyPaid` |
+| Resultado desconhecido (nem "approved" nem "declined") | `ErrInvalidResult` |
 
 ## Decisões de design
 

@@ -5,23 +5,27 @@
 **O quê:** Struct OrderPayments com orderID, total, attempts, mutex. Implementar NewOrderPayments(orderID, total) que valida total > 0.
 
 **Critério de aceite:**
-- [ ] `TestOrderPayments_PG01_InvalidAmount` — NewOrderPayments(id, 0) retorna ErrInvalidAmount
+- [ ] `TestOrderPayments_PG01_InvalidTotal` — NewOrderPayments(id, 0) retorna ErrInvalidAmount
 - [ ] `TestOrderPayments_PG01_ValidTotal` — NewOrderPayments(id, 10000) cria estrutura
-- [ ] `TestOrderPayments_GettersInitial` — Approved() == nil, Attempts() == []
+- [ ] `TestOrderPayments_GettersInitial` — Approved() == zero-value, ok==false; Attempts() == []
+- [ ] `TestOrderPayments_CopiesDefensive` — Attempts() devolve cópia (modificar não afeta interno)
 
 **Arquivo:** `internal/domain/payment/payment.go` + `payment_test.go`
 
 ---
 
-## T002: RecordAttempt com validação de valor (PG-01)
+## T002: RecordAttempt com validação de valor (PG-01, PG-02, ordem)
 
-**O quê:** Método RecordAttempt(amount, status) que valida: amount == total, amount > 0, não permite duplicar approved.
+**O quê:** Método RecordAttempt(amount, status) que valida: ErrAlreadyPaid primeiro, depois amount == total, amount > 0, resultado válido.
 
 **Critério de aceite:**
 - [ ] `TestOrderPayments_PG01_AmountMismatch` — RecordAttempt(9900, declined) → ErrAmountMismatch
 - [ ] `TestOrderPayments_PG01_InvalidAmount` — RecordAttempt(0, approved) → ErrInvalidAmount
 - [ ] `TestOrderPayments_PG02_FirstApproved` — RecordAttempt(10000, approved) registra
 - [ ] `TestOrderPayments_PG02_DeclinedThenApproved` — Decline, depois approve → ambos registram
+- [ ] `TestOrderPayments_PG02_OrderValidations` — Aprovado + valor errado → ErrAlreadyPaid (não ErrAmountMismatch)
+- [ ] `TestOrderPayments_InvalidResult` — RecordAttempt(10000, "unknown") → ErrInvalidResult, não registra
+- [ ] `TestOrderPayments_OnlyDeclinedNoApproved` — Decline×3 → Approved() retorna zero-value, ok==false
 
 **Arquivo:** `internal/domain/payment/payment.go` + `payment_test.go`
 
@@ -54,11 +58,11 @@
 
 ## T005: Concorrência PG-02 (ES-05-like)
 
-**O quê:** Teste com 50 goroutines tentando approvar 1x cada; exatamente 1 sucesso, 49 ErrAlreadyPaid.
+**O quê:** Teste com 50 goroutines tentando approvar 1x cada, sincronizadas por canal; exatamente 1 sucesso, 49 ErrAlreadyPaid.
 
 **Critério de aceite:**
-- [ ] `TestOrderPayments_PG02_RaceCondition` — 50 goroutines, 1 sucesso, 49 falhas
-- [ ] `go test -race` passa sem data races
+- [ ] `TestOrderPayments_PG02_RaceCondition` — 50 goroutines (canal start), 1 sucesso, 49 falhas
+- [ ] `go test -race -count=50` passa sem data races
 
 **Arquivo:** `internal/domain/payment/payment_test.go`
 
