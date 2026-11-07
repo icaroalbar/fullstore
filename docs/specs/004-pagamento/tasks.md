@@ -73,9 +73,9 @@
 **O quê:** Verificar cobertura, atualizar spec.md Status: implementada.
 
 **Critério de aceite:**
-- [ ] `go test -cover ./internal/domain/payment` mostra >= 80%
-- [ ] Spec 004: Status mudado para `implementada`
-- [ ] `make check` passa
+- [x] `go test -cover ./internal/domain/payment` mostra >= 80%
+- [x] Spec 004: Status mudado para `implementada`
+- [x] `make check` passa
 
 **Arquivo:** `docs/specs/004-pagamento/spec.md`
 
