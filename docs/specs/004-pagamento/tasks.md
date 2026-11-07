@@ -14,30 +14,30 @@
 
 ---
 
-## T002: RecordAttempt com validação de valor (PG-01, PG-02, ordem)
+## T002: RecordAttempt com validação de valor (PG-01)
 
-**O quê:** Método RecordAttempt(amount, status) que valida: ErrAlreadyPaid primeiro, depois amount == total, amount > 0, resultado válido.
+**O quê:** Método RecordAttempt(amount, status) que valida: amount == total, amount > 0, resultado válido.
 
 **Critério de aceite:**
 - [ ] `TestOrderPayments_PG01_AmountMismatch` — RecordAttempt(9900, declined) → ErrAmountMismatch
 - [ ] `TestOrderPayments_PG01_InvalidAmount` — RecordAttempt(0, approved) → ErrInvalidAmount
+- [ ] `TestOrderPayments_InvalidResult` — RecordAttempt(10000, "unknown") → ErrInvalidResult, não registra
 - [ ] `TestOrderPayments_PG02_FirstApproved` — RecordAttempt(10000, approved) registra
 - [ ] `TestOrderPayments_PG02_DeclinedThenApproved` — Decline, depois approve → ambos registram
-- [ ] `TestOrderPayments_PG02_OrderValidations` — Aprovado + valor errado → ErrAlreadyPaid (não ErrAmountMismatch)
-- [ ] `TestOrderPayments_InvalidResult` — RecordAttempt(10000, "unknown") → ErrInvalidResult, não registra
 - [ ] `TestOrderPayments_OnlyDeclinedNoApproved` — Decline×3 → Approved() retorna zero-value, ok==false
 
 **Arquivo:** `internal/domain/payment/payment.go` + `payment_test.go`
 
 ---
 
-## T003: Bloquear segundo aprovado (PG-02)
+## T003: Bloquear segundo aprovado (PG-02, ordem)
 
-**O quê:** RecordAttempt(amount, approved) retorna ErrAlreadyPaid se já houver um aprovado.
+**O quê:** RecordAttempt(amount, approved) retorna ErrAlreadyPaid se já houver um aprovado. Validação: ErrAlreadyPaid primeiro, depois amount == total.
 
 **Critério de aceite:**
 - [ ] `TestOrderPayments_PG02_SecondApprovedFails` — Approve, approve → ErrAlreadyPaid
 - [ ] `TestOrderPayments_PG02_DeclineAfterApproveOK` — Approve, decline → OK (histórico)
+- [ ] `TestOrderPayments_PG02_OrderValidations` — Aprovado + valor errado → ErrAlreadyPaid (não ErrAmountMismatch)
 
 **Arquivo:** `internal/domain/payment/payment.go` + `payment_test.go`
 
