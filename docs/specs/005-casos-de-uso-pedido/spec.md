@@ -1,6 +1,6 @@
 # Spec 005: Casos de Uso — Pedido
 
-Status: rascunho
+Status: aprovada
 Etapa: 1
 Regras cobertas: ES-01, ES-02, ES-03, PR-04, PE-06
 
@@ -46,7 +46,7 @@ Os agregados Produto, Pedido e Estoque já aplicam suas próprias regras, mas na
 - Administrador cancelar pedido pago (etapa 4)
 - Frontend
 - Expiração automática (aplicação injeta relógio e chama)
-- **Mudança em Spec 002:** Order.Expire passa a retornar ErrInvalidTransition para pedido não pending (será implementada lá com teste)
+- **Pré-requisito (Spec 002):** Order.Expire precisa retornar ErrInvalidTransition para pedido não pending (implementar com teste antes de Spec 005)
 
 ## Decisões de design
 
@@ -56,7 +56,7 @@ Os agregados Produto, Pedido e Estoque já aplicam suas próprias regras, mas na
 | **Ordem CriarPedido: catálogo → NewOrder → Reserve → gravar** | Validações baratas antes, efeitos colaterais por último; só gravação compensa (Return) |
 | **ExpirarPedidos recebe `agora` (clock)** | Caso de uso stateless; gatilho (job/HTTP) fora de escopo |
 | **Order.Expire marca canceled com expiredAt** | Usa o mesmo status canceled mas registra quando expirou (PE-06) |
-| **Order.Expire retorna ErrInvalidTransition se não pending** | Impede Return duplicado; Expire fica idempotente seguro (mudança spec 002) |
+| **Order.Expire retorna ErrInvalidTransition se não pending** | Impede Return duplicado; Expire fica idempotente com segurança (pré-requisito spec 002) |
 | **CancelarPedido valida Order.Cancel() antes de Return** | Evita Return duplicado; Inventory não é idempotente |
 
 ## Dúvidas em aberto
