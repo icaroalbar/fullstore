@@ -75,3 +75,50 @@ func (inv *Inventory) Reserved(productID string) (int32, error) {
 
 	return stock.reserved, nil
 }
+
+// Reserve attempts to reserve quantities for a list of items.
+// Validates all items before making any changes (all-or-nothing).
+// Phase 1: validate and sum quantities (in local map).
+// Phase 2: apply changes only if all validations pass.
+func (inv *Inventory) Reserve(items []Item) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	inv.mu.Lock()
+	defer inv.mu.Unlock()
+
+	// Phase 1: Validate and aggregate quantities per product
+	reserved := make(map[string]int32) // productID -> total quantity to reserve
+
+	for _, item := range items {
+		// Validate quantity
+		if item.Quantity <= 0 {
+			return ErrInvalidQuantity
+		}
+
+		// Check product exists
+		if _, exists := inv.stocks[item.ProductID]; !exists {
+			return ErrProductNotFound
+		}
+
+		// Sum quantities if product appears multiple times
+		reserved[item.ProductID] += item.Quantity
+	}
+
+	// Phase 2: Validate availability and apply changes
+	for productID, totalQty := range reserved {
+		if inv.stocks[productID].available < totalQty {
+			return ErrInsufficientStock
+		}
+	}
+
+	// All validations passed; apply changes
+	for productID, totalQty := range reserved {
+		stock := inv.stocks[productID]
+		stock.available -= totalQty
+		stock.reserved += totalQty
+	}
+
+	return nil
+}
