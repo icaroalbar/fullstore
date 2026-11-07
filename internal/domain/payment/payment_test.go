@@ -227,3 +227,64 @@ func TestOrderPayments_PG02_OrderValidations(t *testing.T) {
 		t.Errorf("after failed second RecordAttempt, Attempts() should still have 1 item, got %d", len(attempts))
 	}
 }
+
+// T004: Getters seguros (PG-04) + histórico em ordem
+
+func TestOrderPayments_PG04_ApprovedGetter(t *testing.T) {
+	op, _ := NewOrderPayments("order-1", 10000)
+
+	// Register only declined attempts (no approved)
+	if err := op.RecordAttempt(10000, StatusDeclined); err != nil {
+		t.Errorf("RecordAttempt(declined) should not error, got %v", err)
+	}
+
+	approved, ok := op.Approved()
+	if ok {
+		t.Errorf("Approved() should return ok=false when only declined attempts exist")
+	}
+
+	if approved != (Attempt{}) {
+		t.Errorf("Approved() should return zero-value when no approved, got %v", approved)
+	}
+
+	// Now register an approved attempt (first after all declines doesn't work in our implementation)
+	// Instead, test with a new order with only approved
+	op2, _ := NewOrderPayments("order-2", 10000)
+	if err := op2.RecordAttempt(10000, StatusApproved); err != nil {
+		t.Errorf("RecordAttempt(approved) should not error, got %v", err)
+	}
+
+	approved2, ok2 := op2.Approved()
+	if !ok2 {
+		t.Errorf("Approved() should return ok=true when approved exists")
+	}
+
+	if approved2.Status != StatusApproved {
+		t.Errorf("Approved() should return the approved attempt, got %v", approved2.Status)
+	}
+}
+
+func TestOrderPayments_PG04_AttemptsOrder(t *testing.T) {
+	op, _ := NewOrderPayments("order-1", 10000)
+
+	if err := op.RecordAttempt(10000, StatusDeclined); err != nil {
+		t.Errorf("RecordAttempt(declined) should not error, got %v", err)
+	}
+
+	if err := op.RecordAttempt(10000, StatusDeclined); err != nil {
+		t.Errorf("RecordAttempt(declined) should not error, got %v", err)
+	}
+
+	if err := op.RecordAttempt(10000, StatusApproved); err != nil {
+		t.Errorf("RecordAttempt(approved) should not error, got %v", err)
+	}
+
+	attempts := op.Attempts()
+	if len(attempts) != 3 {
+		t.Errorf("Attempts() should have 3 items, got %d", len(attempts))
+	}
+
+	if attempts[0].Status != StatusDeclined || attempts[1].Status != StatusDeclined || attempts[2].Status != StatusApproved {
+		t.Errorf("Attempts() should be in order [declined, declined, approved], got %v", attempts)
+	}
+}

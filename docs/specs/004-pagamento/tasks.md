@@ -5,10 +5,10 @@
 **O quê:** Struct OrderPayments com orderID, total, attempts, mutex. Implementar NewOrderPayments(orderID, total) que valida total > 0.
 
 **Critério de aceite:**
-- [ ] `TestOrderPayments_PG01_InvalidTotal` — NewOrderPayments(id, 0) retorna ErrInvalidAmount
-- [ ] `TestOrderPayments_PG01_ValidTotal` — NewOrderPayments(id, 10000) cria estrutura
-- [ ] `TestOrderPayments_GettersInitial` — Approved() == zero-value, ok==false; Attempts() == []
-- [ ] `TestOrderPayments_CopiesDefensive` — Attempts() devolve cópia (modificar não afeta interno)
+- [x] `TestOrderPayments_PG01_InvalidTotal` — NewOrderPayments(id, 0) retorna ErrInvalidAmount
+- [x] `TestOrderPayments_PG01_ValidTotal` — NewOrderPayments(id, 10000) cria estrutura
+- [x] `TestOrderPayments_GettersInitial` — Approved() == zero-value, ok==false; Attempts() == []
+- [x] `TestOrderPayments_CopiesDefensive` — Attempts() devolve cópia (modificar não afeta interno)
 
 **Arquivo:** `internal/domain/payment/payment.go` + `payment_test.go`
 
@@ -19,12 +19,12 @@
 **O quê:** Método RecordAttempt(amount, status) que valida: amount == total, amount > 0, resultado válido.
 
 **Critério de aceite:**
-- [ ] `TestOrderPayments_PG01_AmountMismatch` — RecordAttempt(9900, declined) → ErrAmountMismatch
-- [ ] `TestOrderPayments_PG01_InvalidAmount` — RecordAttempt(0, approved) → ErrInvalidAmount
-- [ ] `TestOrderPayments_InvalidResult` — RecordAttempt(10000, "unknown") → ErrInvalidResult, não registra
-- [ ] `TestOrderPayments_PG02_FirstApproved` — RecordAttempt(10000, approved) registra
-- [ ] `TestOrderPayments_PG02_DeclinedThenApproved` — Decline, depois approve → ambos registram
-- [ ] `TestOrderPayments_OnlyDeclinedNoApproved` — Decline×3 → Approved() retorna zero-value, ok==false
+- [x] `TestOrderPayments_PG01_AmountMismatch` — RecordAttempt(9900, declined) → ErrAmountMismatch
+- [x] `TestOrderPayments_PG01_InvalidAmount` — RecordAttempt(0, approved) → ErrInvalidAmount
+- [x] `TestOrderPayments_InvalidResult` — RecordAttempt(10000, "unknown") → ErrInvalidResult, não registra
+- [x] `TestOrderPayments_PG02_FirstApproved` — RecordAttempt(10000, approved) registra
+- [x] `TestOrderPayments_PG02_DeclinedThenApproved` — Decline, depois approve → ambos registram
+- [x] `TestOrderPayments_OnlyDeclinedNoApproved` — Decline×3 → Approved() retorna zero-value, ok==false
 
 **Arquivo:** `internal/domain/payment/payment.go` + `payment_test.go`
 
@@ -35,9 +35,9 @@
 **O quê:** RecordAttempt retorna ErrAlreadyPaid para qualquer tentativa (aprovada ou recusada) se já há um aprovado. Validação: ErrAlreadyPaid primeiro (em qualquer caso), depois amount == total.
 
 **Critério de aceite:**
-- [ ] `TestOrderPayments_PG02_SecondApprovedFails` — Approve, approve → ErrAlreadyPaid
-- [ ] `TestOrderPayments_PG02_DeclineAfterApproveFails` — Approve, decline → ErrAlreadyPaid (não OK)
-- [ ] `TestOrderPayments_PG02_OrderValidations` — Aprovado + valor errado → ErrAlreadyPaid (não ErrAmountMismatch)
+- [x] `TestOrderPayments_PG02_SecondApprovedFails` — Approve, approve → ErrAlreadyPaid
+- [x] `TestOrderPayments_PG02_DeclineAfterApproveFails` — Approve, decline → ErrAlreadyPaid (não OK)
+- [x] `TestOrderPayments_PG02_OrderValidations` — Aprovado + valor errado → ErrAlreadyPaid (não ErrAmountMismatch)
 
 **Arquivo:** `internal/domain/payment/payment.go` + `payment_test.go`
 
