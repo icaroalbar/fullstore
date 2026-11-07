@@ -5,11 +5,11 @@
 **O quê:** Criar struct Inventory com mapa productID → {disponível, reservado} + mutex. Implementar Replenish(productID, qty), Available(productID), Reserved(productID) com lock nos getters.
 
 **Critério de aceite:**
-- [ ] `TestInventory_ReplenishPositive` — Replenish("p1", 5) → Available("p1") = 5
-- [ ] `TestInventory_ReplenishInvalidQuantity` — Replenish("p1", 0) retorna ErrInvalidQuantity
-- [ ] `TestInventory_MultipleReplenish` — múltiplas reposições se somam
-- [ ] `TestInventory_GetterProductNotFound` — Available("unknown") retorna ErrProductNotFound
-- [ ] `TestInventory_GettersUseLock` — getters adquirem lock (verificar -race)
+- [x] `TestInventory_ReplenishPositive` — Replenish("p1", 5) → Available("p1") = 5
+- [x] `TestInventory_ReplenishInvalidQuantity` — Replenish("p1", 0) retorna ErrInvalidQuantity
+- [x] `TestInventory_MultipleReplenish` — múltiplas reposições se somam
+- [x] `TestInventory_GetterProductNotFound` — Available("unknown") retorna ErrProductNotFound
+- [x] `TestInventory_GettersUseLock` — getters adquirem lock (verificar -race)
 
 **Arquivo:** `internal/domain/stock/inventory.go` + `inventory_test.go` + `errors.go`
 
