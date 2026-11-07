@@ -1,5 +1,13 @@
 version: "2"
 
+run:
+  timeout: 5m
+
+issues:
+  exclude-dirs:
+    - web
+    - web/node_modules
+
 linters:
   default: none
   enable:
