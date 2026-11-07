@@ -535,3 +535,129 @@ func TestExpirarPedidos_MistoNovoEAntigo(t *testing.T) {
 		t.Errorf("Estoque deve estar em 195 (antigo devolvido); got %d", inventoryFake.GetStock("prod1"))
 	}
 }
+
+// T006: Teste do problema conhecido (Return falha após Cancel bem-sucedido)
+
+func TestCancelarPedido_ReturnFails_PropagaErroComID(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar pedido
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+	if err != nil {
+		t.Fatalf("CriarPedido failed: %v", err)
+	}
+	orderID := o.ID()
+
+	// Estoque reservado: 100 - 5 = 95
+	if inventoryFake.GetStock("prod1") != 95 {
+		t.Fatalf("Stock deve estar em 95, got %d", inventoryFake.GetStock("prod1"))
+	}
+
+	// Configurar Return para falhar
+	errReturn := errors.New("return error")
+	inventoryFake.SetReturnError(errReturn)
+
+	// Cancelar pedido (Update funciona, Return falha)
+	err = uc.CancelarPedido(orderID)
+
+	if err == nil {
+		t.Errorf("CancelarPedido com Return falhando deve retornar erro")
+	}
+
+	// Verificar que erro contém o ID do pedido
+	if !strings.Contains(err.Error(), orderID) {
+		t.Errorf("Erro deve conter ID do pedido %s, got %v", orderID, err)
+	}
+
+	// Verificar que errors.Is encontra o erro do Return
+	if !errors.Is(err, errReturn) {
+		t.Errorf("Erro deve conter errReturn, got %v", err)
+	}
+
+	// Verificar que o pedido foi cancelado mesmo assim
+	recovered, _ := orderRepoFake.GetForTest(orderID)
+	if recovered.Status() != order.StatusCanceled {
+		t.Errorf("Pedido deve estar canceled mesmo com Return falhando, got %v", recovered.Status())
+	}
+
+	// Verificar que estoque NÃO foi devolvido (Return falhou)
+	if inventoryFake.GetStock("prod1") != 95 {
+		t.Errorf("Estoque deve estar preso em 95 (Return falhou); got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+// T005 polimento: ListPending falha e Update falha com erro real
+
+func TestExpirarPedidos_ListPendingFalha(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Configurar ListPending para falhar
+	orderRepoFake.SetError(errors.New("listpending error"))
+
+	// Rodar expiração
+	err := uc.ExpirarPedidos()
+
+	if err == nil {
+		t.Errorf("ExpirarPedidos com ListPending falhando deve retornar erro")
+	}
+
+	// Nenhum Return deve ter sido chamado
+	if inventoryFake.GetStock("prod1") != 0 {
+		t.Errorf("Estoque não deve ter mudado; got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestExpirarPedidos_UpdateFalhaComErroReal(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 200)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar um pedido antigo
+	clockFake.SetNow(time.Now().Add(-31 * time.Minute))
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	_, _ = uc.CriarPedido(items)
+
+	// Voltar ao relógio atual e configurar Update para falhar
+	clockFake.SetNow(time.Now())
+	orderRepoFake.SetError(errors.New("update error"))
+
+	// Rodar expiração
+	err := uc.ExpirarPedidos()
+
+	if err == nil {
+		t.Errorf("ExpirarPedidos com Update falhando deve retornar erro")
+	}
+
+	// Verificar que nenhum Return foi chamado (Update falhou)
+	if inventoryFake.GetStock("prod1") != 195 {
+		t.Errorf("Estoque não deve ter devolvido (Update falhou); got %d", inventoryFake.GetStock("prod1"))
+	}
+}
