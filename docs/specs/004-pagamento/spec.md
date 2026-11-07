@@ -10,9 +10,9 @@ Um pedido pending precisa ser pago para virar paid. O cliente pode tentar pagar 
 ## Comportamento esperado
 
 **Validação de valor (PG-01):**
-- Cenário 01a: Dado um pedido com total 10000 centavos, quando registro um pagamento de 10000, então a tentativa é aceita para processamento.
-- Cenário 01b: Dado um pedido com total 10000 centavos, quando registro um pagamento de 9900, então retorna `ErrAmountMismatch` e nada é registrado.
-- Cenário 01c: Dado um pedido com total 10000 centavos, quando registro um pagamento de 0 ou negativo, então retorna `ErrInvalidAmount`.
+- Cenário 01a: Dado um pedido com total 10000 centavos, quando registro uma tentativa de 10000, então a tentativa fica registrada.
+- Cenário 01b: Dado um pedido com total 10000 centavos, quando registro uma tentativa de 9900, então retorna `ErrAmountMismatch` e nada é registrado.
+- Cenário 01c: Dado um pedido com total 10000 centavos, quando registro uma tentativa de 0 ou negativo, então retorna `ErrInvalidAmount`.
 
 **Máximo um pagamento aprovado por pedido (PG-02):**
 - Cenário 02a: Dado um pedido sem pagamento aprovado, quando uma tentativa é aprovada, então o pedido passa a ter 1 pagamento aprovado.
@@ -20,7 +20,7 @@ Um pedido pending precisa ser pago para virar paid. O cliente pode tentar pagar 
 - Cenário 02c: Dado um pedido com uma tentativa recusada, quando uma nova tentativa é aprovada, então é aceita (recusa não bloqueia).
 
 **Pagamento recusado mantém pedido pending (PG-04):**
-- Cenário 04a: Dado uma tentativa de pagamento, quando o gateway recusa, então a tentativa fica como recusada e o domínio não altera o pedido.
+- Cenário 04a: Dado um pedido, quando registro uma tentativa recusada, então a tentativa fica registrada e o status do pedido não muda (continua pending).
 - Cenário 04b: Dado um pedido com tentativas recusadas, quando consulto o histórico, então todas as tentativas aparecem, na ordem em que foram feitas.
 
 ## Casos de erro
@@ -30,11 +30,20 @@ Um pedido pending precisa ser pago para virar paid. O cliente pode tentar pagar 
 | Valor do pagamento ≤ 0 | `ErrInvalidAmount` |
 | Registrar pagamento quando já há um aprovado | `ErrAlreadyPaid` |
 
+## Decisões de design
+
+| Decisão | Motivo |
+| --- | --- |
+| **OrderPayments como agregado por pedido** | Centraliza todas as tentativas de pagamento de um pedido (ID do pedido, total em centavos recebido, lista de tentativas em ordem). Garante atomicamente PG-01 (valor == total) e PG-02 (máximo 1 aprovado). Não importa o pacote order. |
+| **Uma só operação: registrar tentativa** | Cliente chama uma operação que aceita: pedido ID, valor, resultado (aprovado/recusado). Ela valida e armazena. |
+
 ## Fora do escopo
-- PG-03 (idempotência): fica para cases de uso/infra
+- Validar se o pedido está pending (responsabilidade de casos de uso)
+- Quem chama order.Pay() para confirmar a mudança de status (casos de uso)
+- PG-03 (idempotência): fica para casos de uso/infra
 - PG-05 (gateway timeout): fica para casos de uso/infra
 - Estorno (admin cancelar pedido pago): etapa 4+
 - Gateway real: porta (interface) com falso para testes
 
 ## Dúvidas em aberto
-- _(nenhuma — Contexto e cenários aprovados por Icaro)_
+- **PG-02 segura com 2 aprovações simultâneas?** Decisão de concorrência para o plano (como ES-05 do estoque).
