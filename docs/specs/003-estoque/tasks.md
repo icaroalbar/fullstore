@@ -1,59 +1,62 @@
 # Tarefas 003: Estoque
 
-## T001: Tipos base Stock, Replenish e getters — ES-01 base
+## T001: Tipos base Inventory, Replenish e getters
 
-**O quê:** Criar struct Stock com productID, available, reserved, mutex. Implementar Replenish (adiciona ao disponível) e getters Available(), Reserved().
+**O quê:** Criar struct Inventory com mapa productID → {disponível, reservado} + mutex. Implementar Replenish(productID, qty), Available(productID), Reserved(productID) com lock nos getters.
 
 **Critério de aceite:**
-- [ ] `TestStock_ReplenishPositive` — Replenish(5) em estoque vazio → available = 5
-- [ ] `TestStock_GetterAvailable` — Available() retorna disponível correto
-- [ ] `TestStock_GetterReserved` — Reserved() retorna reservado correto
-- [ ] `TestStock_ReplenishInvalidQuantity` — Replenish(0) ou Replenish(-1) retorna ErrInvalidQuantity
-- [ ] `TestStock_MultipleReplenish` — múltiplas reposições se somam
+- [ ] `TestInventory_ReplenishPositive` — Replenish("p1", 5) → Available("p1") = 5
+- [ ] `TestInventory_ReplenishInvalidQuantity` — Replenish("p1", 0) retorna ErrInvalidQuantity
+- [ ] `TestInventory_MultipleReplenish` — múltiplas reposições se somam
+- [ ] `TestInventory_GetterProductNotFound` — Available("unknown") retorna ErrProductNotFound
+- [ ] `TestInventory_GettersUseLock` — getters adquirem lock (verificar -race)
 
-**Arquivo:** `internal/domain/stock/stock.go` + `stock_test.go` + `errors.go`
+**Arquivo:** `internal/domain/stock/inventory.go` + `stock_test.go` + `errors.go`
 
 ---
 
 ## T002: Reserve com validação — ES-01, ES-02
 
-**O quê:** Implementar Reserve(items []Item) error que valida tudo antes de mudar quantidades. Retorna ErrInsufficientStock se faltar, ErrInvalidQuantity se qty<=0, soma produtos repetidos.
+**O quê:** Implementar Reserve(items []Item) que valida tudo antes de mudar quantidades. Retorna ErrInsufficientStock se faltar, ErrInvalidQuantity se qty≤0, soma produtos repetidos.
 
 **Critério de aceite:**
-- [ ] `TestStock_ES01_ReserveDecrementsAvailable` — Reserve(3) em 10 disponível → available = 7, reserved = 3
-- [ ] `TestStock_ES02_InsufficientStock` — Reserve(15) em 10 disponível → ErrInsufficientStock, nada muda
-- [ ] `TestStock_ReserveInvalidQuantity` — Reserve com qty <= 0 → ErrInvalidQuantity
-- [ ] `TestStock_ReserveMultipleItems` — Reserve([Notebook×3, Mouse×2]) funciona com múltiplos itens
-- [ ] `TestStock_ReserveProductRepetition` — Reserve([Notebook×2, Notebook×3]) soma para 5 e valida tudo
-- [ ] `TestStock_ES02b_TwoProductsOneFails` — Reserve([A×3, B×15]) com B tendo 10 → nada é reservado
+- [ ] `TestInventory_ES01_ReserveDecrementsAvailable` — Reserve([{p1, 3}]) em p1=10 → available=7, reserved=3
+- [ ] `TestInventory_ES02_InsufficientStock` — Reserve([{p1, 15}]) em p1=10 → ErrInsufficientStock, nada muda
+- [ ] `TestInventory_ReserveInvalidQuantity` — Reserve com qty ≤ 0 → ErrInvalidQuantity
+- [ ] `TestInventory_ReserveMultipleItems` — Reserve([{p1,3}, {p2,2}]) funciona
+- [ ] `TestInventory_ReserveProductRepetition` — Reserve([{p1,2}, {p1,3}]) soma para 5 antes de validar
+- [ ] `TestInventory_ES02b_AtomicFail` — Reserve([{p1,3}, {p2,15}]) com p2=10 → nada é reservado (tudo-ou-nada)
 
-**Arquivo:** `internal/domain/stock/stock.go` + `stock_test.go`
+**Arquivo:** `internal/domain/stock/inventory.go` + `stock_test.go`
 
 ---
 
 ## T003: Return e Deduct — ES-03, ES-04
 
-**O quê:** Implementar Return(items []Item) para devolver reserva (cancel/expire) e Deduct(items []Item) para baixar de vez (pagamento).
+**O quê:** Implementar Return(items []Item) e Deduct(items []Item). Ambos validam tudo antes de mudar, rejeitam qty≤0, retornam ErrInvalidOperation se quantidade > reservado.
 
 **Critério de aceite:**
-- [ ] `TestStock_ES03a_ReturnAfterCancel` — Reserve 3, depois Return 3 → available = 10, reserved = 0
-- [ ] `TestStock_ES03b_ReturnAfterExpire` — Reserve 3, depois Return 3 → mesmo resultado
-- [ ] `TestStock_ReturnInvalidOperation` — Return(5) quando reserved = 3 → ErrInvalidOperation
-- [ ] `TestStock_ES04_DeductAfterPay` — Reserve 3 → available = 7, reserved = 3; Deduct 3 → available = 7, reserved = 0 (vendidas de vez)
-- [ ] `TestStock_DeductInvalidOperation` — Deduct(5) quando reserved = 3 → ErrInvalidOperation
+- [ ] `TestInventory_ES03a_ReturnAfterCancel` — Reserve([{p1,3}]), depois Return([{p1,3}]) → available=10, reserved=0
+- [ ] `TestInventory_ES03b_ReturnAfterExpire` — mesmo resultado
+- [ ] `TestInventory_ReturnInvalidQuantity` — Return com qty ≤ 0 → ErrInvalidQuantity
+- [ ] `TestInventory_ReturnTooMuch` — Return([{p1,5}]) quando reserved=3 → ErrInvalidOperation, nada muda
+- [ ] `TestInventory_ReturnAtomicFail` — Return([{p1,3}, {p2,15}]) com p2 reserved=10 → tudo-ou-nada, nada muda
+- [ ] `TestInventory_ES04_DeductAfterPay` — Reserve([{p1,3}]) → available=7,reserved=3; Deduct([{p1,3}]) → available=7,reserved=0
+- [ ] `TestInventory_DeductInvalidOperation` — Deduct([{p1,5}]) quando reserved=3 → ErrInvalidOperation
 
-**Arquivo:** `internal/domain/stock/stock.go` + `stock_test.go`
+**Arquivo:** `internal/domain/stock/inventory.go` + `stock_test.go`
 
 ---
 
 ## T004: Teste de concorrência — ES-05
 
-**O quê:** Teste com 50 goroutines tentando comprar 1 unidade cada de estoque com 10 unidades. Deve haver exatamente 10 sucesso, 40 falhas com ErrInsufficientStock. Final: available = 0, reserved = 10.
+**O quê:** Teste com 50 goroutines tentando comprar 1 unidade cada de estoque com 10 unidades. Deve haver exatamente 10 sucesso, 40 falhas com ErrInsufficientStock. Também testa leitura concorrente (getters com lock).
 
 **Critério de aceite:**
-- [ ] `TestStock_ES05_RaceCondition` — 50 goroutines disputam 10 unidades; exatamente 10 Reserve sucesso, 40 ErrInsufficientStock
-- [ ] `TestStock_ES05_FinalState` — Após race, available = 0, reserved = 10
-- [ ] `-race` flag passa sem data races
+- [ ] `TestInventory_ES05_RaceCondition` — 50 goroutines, cada Reserve([{p1,1}]) com 10 disponível; 10 sucesso, 40 ErrInsufficientStock
+- [ ] `TestInventory_ES05_FinalState` — Após race, available=0, reserved=10
+- [ ] `TestInventory_ES05_ConcurrentReads` — Enquanto Reserve corre, 20 goroutines chamam Available/Reserved; sem panic
+- [ ] `go test -race` passa sem data races
 
 **Arquivo:** `internal/domain/stock/stock_test.go`
 
@@ -61,7 +64,7 @@
 
 ## T005: Cobertura >= 80% e status implementada
 
-**O quê:** Verificar cobertura do pacote domain/stock, confirmar >= 80%, atualizar spec.md para Status: implementada, fazer commit.
+**O quê:** Verificar cobertura do pacote domain/stock, confirmar >= 80%, atualizar spec.md para Status: implementada.
 
 **Critério de aceite:**
 - [ ] `go test -cover ./internal/domain/stock` mostra >= 80%
