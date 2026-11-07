@@ -10,30 +10,35 @@ Spec: ./spec.md
 
 ```go
 // domain/payment/payment.go
-type PaymentStatus string // "approved" ou "declined"
+type Status string
 
-type PaymentAttempt struct {
+const (
+  StatusApproved Status = "approved"
+  StatusDeclined Status = "declined"
+)
+
+type Attempt struct {
   Amount int64
-  Status PaymentStatus
+  Status Status
 }
 
 type OrderPayments struct {
   orderID  string
   total    int64
-  attempts []PaymentAttempt
+  attempts []Attempt
   mu       sync.Mutex
 }
 
 func NewOrderPayments(orderID string, total int64) (*OrderPayments, error)
-func (op *OrderPayments) RecordAttempt(amount int64, result PaymentStatus) error
-func (op *OrderPayments) Approved() (PaymentAttempt, bool)
-func (op *OrderPayments) Attempts() []PaymentAttempt
+func (op *OrderPayments) RecordAttempt(amount int64, result Status) error
+func (op *OrderPayments) Approved() (Attempt, bool)
+func (op *OrderPayments) Attempts() []Attempt
 
 // Erros
 var (
-  ErrAlreadyPaid = errors.New("...")
-  ErrAmountMismatch = errors.New("...")
   ErrInvalidAmount = errors.New("...")
+  ErrAmountMismatch = errors.New("...")
+  ErrAlreadyPaid = errors.New("...")
   ErrInvalidResult = errors.New("...")
 )
 ```

@@ -21,10 +21,10 @@ var (
 type Status string
 
 const (
-	// Approved payment was accepted.
-	Approved Status = "approved"
-	// Declined payment was rejected.
-	Declined Status = "declined"
+	// StatusApproved payment was accepted.
+	StatusApproved Status = "approved"
+	// StatusDeclined payment was rejected.
+	StatusDeclined Status = "declined"
 )
 
 // Attempt represents a single payment attempt for an order.
@@ -64,7 +64,7 @@ func (op *OrderPayments) Approved() (Attempt, bool) {
 	defer op.mu.Unlock()
 
 	for _, attempt := range op.attempts {
-		if attempt.Status == Approved {
+		if attempt.Status == StatusApproved {
 			return attempt, true
 		}
 	}
