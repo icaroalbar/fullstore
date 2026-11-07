@@ -58,10 +58,10 @@
 **O quê:** Teste com 50 goroutines tentando comprar 1 unidade cada de estoque com 10 unidades. Deve haver exatamente 10 sucesso, 40 falhas com ErrInsufficientStock. Também testa leitura concorrente (getters com lock).
 
 **Critério de aceite:**
-- [ ] `TestInventory_ES05_RaceCondition` — 50 goroutines, cada Reserve([{p1,1}]) com 10 disponível; 10 sucesso, 40 ErrInsufficientStock
-- [ ] `TestInventory_ES05_FinalState` — Após race, available=0, reserved=10
-- [ ] `TestInventory_ES05_ConcurrentReads` — Enquanto Reserve corre, 20 goroutines chamam Available/Reserved; sem panic
-- [ ] `go test -race` passa sem data races
+- [x] `TestInventory_ES05_RaceCondition` — 50 goroutines, cada Reserve([{p1,1}]) com 10 disponível; 10 sucesso, 40 ErrInsufficientStock
+- [x] `TestInventory_ES05_FinalState` — Após race, available=0, reserved=10
+- [x] `TestInventory_ES05_ConcurrentReads` — Enquanto Reserve corre, 20 goroutines chamam Available/Reserved; sem panic
+- [x] `go test -race` passa sem data races
 
 **Arquivo:** `internal/domain/stock/stock_test.go`
 

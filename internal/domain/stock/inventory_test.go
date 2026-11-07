@@ -1,6 +1,7 @@
 package stock
 
 import (
+	"sync"
 	"testing"
 )
 
@@ -511,5 +512,108 @@ func TestInventory_DeductAtomicFail(t *testing.T) {
 	reserved1, _ := inv.Reserved("p1")
 	if reserved1 != 3 {
 		t.Errorf("after failed Deduct, p1 reserved should still be 3, got %d", reserved1)
+	}
+}
+
+// T004: Concorrência — ES-05
+
+func TestInventory_ES05_RaceCondition(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+
+	successCount := 0
+	failureCount := 0
+	var mu sync.Mutex
+
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 1}})
+			mu.Lock()
+			switch err {
+			case nil:
+				successCount++
+			case ErrInsufficientStock:
+				failureCount++
+			}
+			mu.Unlock()
+		}()
+	}
+	wg.Wait()
+
+	if successCount != 10 {
+		t.Errorf("ES05: expected exactly 10 successes, got %d", successCount)
+	}
+	if failureCount != 40 {
+		t.Errorf("ES05: expected exactly 40 failures, got %d", failureCount)
+	}
+}
+
+func TestInventory_ES05_FinalState(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = inv.Reserve([]Item{{ProductID: "p1", Quantity: 1}})
+		}()
+	}
+	wg.Wait()
+
+	available, _ := inv.Available("p1")
+	if available != 0 {
+		t.Errorf("after race, available should be 0, got %d", available)
+	}
+
+	reserved, _ := inv.Reserved("p1")
+	if reserved != 10 {
+		t.Errorf("after race, reserved should be 10, got %d", reserved)
+	}
+}
+
+func TestInventory_ES05_ConcurrentReads(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = inv.Reserve([]Item{{ProductID: "p1", Quantity: 1}})
+		}()
+	}
+
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = inv.Available("p1")
+			_, _ = inv.Reserved("p1")
+		}()
+	}
+
+	wg.Wait()
+
+	available, _ := inv.Available("p1")
+	if available != 0 {
+		t.Errorf("after concurrent reads/writes, available should be 0, got %d", available)
+	}
+
+	reserved, _ := inv.Reserved("p1")
+	if reserved != 10 {
+		t.Errorf("after concurrent reads/writes, reserved should be 10, got %d", reserved)
 	}
 }
