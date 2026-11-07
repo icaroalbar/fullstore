@@ -2,6 +2,7 @@ package ordering
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -323,5 +324,214 @@ func TestCriarPedido_04c_SaveEReturnFalham(t *testing.T) {
 	}
 	if !errors.Is(err, errReturn) {
 		t.Errorf("Erro joinado deve conter errReturn, got %v", err)
+	}
+}
+
+// T005: ExpirarPedidos com Update + clock (cenários 09-10)
+
+func TestExpirarPedidos_09_PE06_ExpiraAntigosDevolvePending(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar pedido
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+	if err != nil {
+		t.Fatalf("CriarPedido failed: %v", err)
+	}
+	orderID := o.ID()
+
+	// Avanço relógio em 31 minutos (>30 min)
+	clockFake.SetNow(time.Now().Add(31 * time.Minute))
+
+	// Rodar expiração
+	err = uc.ExpirarPedidos()
+
+	if err != nil {
+		t.Errorf("ExpirarPedidos deve suceder, got %v", err)
+	}
+
+	// Verificar que pedido foi cancelado com expiredAt
+	recovered, _ := orderRepoFake.GetForTest(orderID)
+	if recovered.Status() != order.StatusCanceled {
+		t.Errorf("Pedido deve estar canceled, got %v", recovered.Status())
+	}
+	if recovered.ExpiredAt() == nil {
+		t.Errorf("ExpiredAt deve estar setado")
+	}
+
+	// Verificar que estoque foi devolvido
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Errorf("Estoque deve ter sido devolvido; esperado 100, got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestExpirarPedidos_09b_NaoExpiraJaCancelado(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar pedido
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+	if err != nil {
+		t.Fatalf("CriarPedido failed: %v", err)
+	}
+	orderID := o.ID()
+
+	// Simular que o pedido foi cancelado via Update (fora do escopo de ExpirarPedidos)
+	_ = orderRepoFake.Update(orderID, func(ord *order.Order) error {
+		// Simular devolução manual para estado paid
+		_ = inventoryFake.Return([]stock.Item{{ProductID: "prod1", Quantity: 5}})
+		return ord.Pay(clockFake.Now())
+	})
+
+	// Estoque deve estar em 100 (devolvido)
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Fatalf("Estoque deve estar em 100, got %d", inventoryFake.GetStock("prod1"))
+	}
+
+	// Avanço relógio em 31 minutos
+	clockFake.SetNow(time.Now().Add(31 * time.Minute))
+
+	// Rodar expiração (ListPending não inclui paid, então este pedido não será processado)
+	err = uc.ExpirarPedidos()
+
+	// Não deve retornar erro
+	if err != nil {
+		t.Errorf("ExpirarPedidos deve suceder, got %v", err)
+	}
+
+	// Verificar que estoque não foi alterado
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Errorf("Estoque não deve ser alterado; esperado 100, got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestExpirarPedidos_10_ReturnFailaAcumulaErro(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar pedido
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+	if err != nil {
+		t.Fatalf("CriarPedido failed: %v", err)
+	}
+	orderID := o.ID()
+
+	// Configurar Return para falhar
+	errReturn := errors.New("return error")
+	inventoryFake.SetReturnError(errReturn)
+
+	// Avanço relógio em 31 minutos
+	clockFake.SetNow(time.Now().Add(31 * time.Minute))
+
+	// Rodar expiração
+	err = uc.ExpirarPedidos()
+
+	if err == nil {
+		t.Errorf("ExpirarPedidos deve retornar erro quando Return falha")
+	}
+
+	// Verificar que erro contém o ID do pedido
+	if !strings.Contains(err.Error(), orderID) {
+		t.Errorf("Erro deve conter ID do pedido %s, got %v", orderID, err)
+	}
+
+	// Verificar que errors.Is acha o erro do Return
+	if !errors.Is(err, errReturn) {
+		t.Errorf("Erro deve conter errReturn, got %v", err)
+	}
+
+	// Estoque não deve ter sido devolvido (Return falhou)
+	if inventoryFake.GetStock("prod1") != 95 {
+		t.Errorf("Estoque deve estar em 95 (Return falhou); got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestExpirarPedidos_MistoNovoEAntigo(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 200)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar pedido antigo (será expirado)
+	clockFake.SetNow(time.Now().Add(-31 * time.Minute))
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	oAntigo, _ := uc.CriarPedido(items)
+	idAntigo := oAntigo.ID()
+
+	// Criar pedido novo (não será expirado, pois clock foi resetado)
+	clockFake.SetNow(time.Now())
+	oNovo, _ := uc.CriarPedido(items)
+	idNovo := oNovo.ID()
+
+	// Rodar expiração com o relógio atual
+	err := uc.ExpirarPedidos()
+
+	if err != nil {
+		t.Errorf("ExpirarPedidos com misto deve suceder, got %v", err)
+	}
+
+	// Verificar que pedido antigo foi expirado
+	recoveredAntigo, _ := orderRepoFake.GetForTest(idAntigo)
+	if recoveredAntigo.Status() != order.StatusCanceled {
+		t.Errorf("Pedido antigo deve estar canceled, got %v", recoveredAntigo.Status())
+	}
+
+	// Verificar que pedido novo NÃO foi expirado
+	recoveredNovo, _ := orderRepoFake.GetForTest(idNovo)
+	if recoveredNovo.Status() != order.StatusPending {
+		t.Errorf("Pedido novo deve estar pending (not expired), got %v", recoveredNovo.Status())
+	}
+
+	// Verificar estoque: 200 - 5 (antigo) = 195 (antigo) → expirar devolve 5 → 195; - 5 (novo) = 190 após novo
+	// Mas antigo expira ANTES de novo ser criado no relógio, então:
+	// Inicial 200 → antigo -5 = 195 → novo -5 = 190
+	// Expiração: antigo retorna +5 = 195, novo ErrNotExpired (não toca)
+	if inventoryFake.GetStock("prod1") != 195 {
+		t.Errorf("Estoque deve estar em 195 (antigo devolvido); got %d", inventoryFake.GetStock("prod1"))
 	}
 }

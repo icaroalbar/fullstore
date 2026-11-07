@@ -59,7 +59,7 @@
 - [x] `TestCancelarPedido_08_CancelaCancelado` — Update retorna ErrInvalidTransition, sem Return duplicado
 - [x] `TestCancelarPedido_08b_PedidoInexistente` — Update retorna ErrOrderNotFound, sem Return
 - [x] `TestCancelarPedido_UpdateFaila` — Update falha, Return não chamado
-- [x] `make check` passa (76.3% coverage)
+- [x] `make check` passa (93.6% coverage)
 
 **Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
 
@@ -70,11 +70,11 @@
 **O quê:** Implementar `ExpirarPedidos() error` que: 1) lista pending (cópias), 2) para cada: `Update(id, func(o *order.Order) error { return o.Expire(clock.Now()) })`, 3) Return. Se o.Expire retorna ErrNotExpired (pedido novo), ignorar (não é erro). Se Return falha, acumula erro com ID. Propaga errors.Join de erros reais. Sem parar no erro.
 
 **Critério de aceite:**
-- [ ] `TestExpirarPedidos_09_PE06_ExpiraAntigosDevolvePending` — >30 min → expired (canceled com expiredAt), Return chamado
-- [ ] `TestExpirarPedidos_09b_NaoExpiraJaCancelado` — já cancelado → ErrInvalidTransition (de o.Expire), sem Return
-- [ ] `TestExpirarPedidos_10_ReturnFailaAcumulaErro` — Return falha, erro acumulado com ID, demais processados, errors.Join propagado
-- [ ] `TestExpirarPedidos_MistoNovoEAntigo` — pendidos novos + antigos; antigos expiram+devolvem, novos ignorados, erro vazio (sem erros reais)
-- [ ] `make check` passa
+- [x] `TestExpirarPedidos_09_PE06_ExpiraAntigosDevolvePending` — >30 min → expired (canceled com expiredAt), Return chamado
+- [x] `TestExpirarPedidos_09b_NaoExpiraJaCancelado` — já cancelado → ErrInvalidTransition (de o.Expire), sem Return
+- [x] `TestExpirarPedidos_10_ReturnFailaAcumulaErro` — Return falha, erro acumulado com ID, demais processados, errors.Join propagado
+- [x] `TestExpirarPedidos_MistoNovoEAntigo` — pendidos novos + antigos; antigos expiram+devolvem, novos ignorados, erro vazio (sem erros reais)
+- [x] `make check` passa (93.6% coverage)
 
 **Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
 
