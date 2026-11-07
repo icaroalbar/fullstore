@@ -1,6 +1,6 @@
 # Spec 003: Estoque
 
-Status: aprovada
+Status: implementada
 Etapa: 1
 Regras cobertas: ES-01, ES-02, ES-03, ES-04, ES-05
 
