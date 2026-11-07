@@ -1,6 +1,6 @@
 # Spec 003: Estoque
 
-Status: rascunho
+Status: aprovada
 Etapa: 1
 Regras cobertas: ES-01, ES-02, ES-03, ES-04, ES-05
 
@@ -24,7 +24,6 @@ Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobre
 | --- | --- |
 | Reserve: item sem estoque suficiente (soma de quantidade) | ErrInsufficientStock |
 | Reserve: quantidade <= 0 em qualquer item | ErrInvalidQuantity |
-| Reserve: mesmo produto repetido no pedido | soma as quantidades antes de validar |
 | Return: devolver mais do que foi reservado | ErrInvalidOperation |
 | Deduct: baixar mais do que foi reservado | ErrInvalidOperation |
 | Replenish: quantidade <= 0 | ErrInvalidQuantity |
@@ -36,8 +35,8 @@ Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobre
 - **Estoque inicial**: Entra via Replenish (não em NewProduct)
 - **Tudo ou nada**: Reserve valida todos os itens do pedido antes de mudar qualquer quantidade
   - Se um item faltar, nenhum é reservado
-  - Se mesmo produto aparece repetido, soma as quantidades antes de validar
   - Responsabilidade: use case Order passa todos os itens de uma vez
+- **Produto repetido no pedido**: Se o mesmo produto aparece múltiplas vezes, soma as quantidades antes de validar
 - **Validações**: quantidade <= 0 retorna erro antes de qualquer mudança
 
 ## Operações de Stock
@@ -58,4 +57,4 @@ Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobre
 
 ## Dúvidas em aberto
 
-- **Técnica de concorrência para ES-05**: Spec define apenas a regra (nunca negativo). Plano e código decidem: mutex em memória (etapa 1) ou pessimistic lock no banco (etapa 2+).
+(nenhuma)
