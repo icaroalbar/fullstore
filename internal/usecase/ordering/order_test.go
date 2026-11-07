@@ -2,7 +2,6 @@ package ordering
 
 import (
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -296,11 +295,14 @@ func TestCriarPedido_04c_SaveEReturnFalham(t *testing.T) {
 	}
 	catalogFake.SetProductByID("prod1", p1)
 
+	errSave := errors.New("save error")
+	errReturn := errors.New("return error")
+
 	orderRepoFake := NewOrderRepositoryFake()
-	orderRepoFake.SetError(errors.New("save error"))
+	orderRepoFake.SetError(errSave)
 	inventoryFake := NewInventoryPortFake()
 	inventoryFake.SetStock("prod1", 100)
-	inventoryFake.SetReturnError(errors.New("return error"))
+	inventoryFake.SetReturnError(errReturn)
 	clockFake := NewClockFake(time.Now())
 
 	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
@@ -316,15 +318,10 @@ func TestCriarPedido_04c_SaveEReturnFalham(t *testing.T) {
 	}
 
 	// Verificar que errors.Join retorna ambos os erros
-	if !errors.Is(err, errors.New("save error")) {
-		// Note: errors.Is não funciona com strings diretas de errors.New,
-		// mas devemos verificar que o erro do Save está no joined error
-		errStr := err.Error()
-		if !strings.Contains(errStr, "save error") {
-			t.Errorf("Erro joinado deve conter 'save error', got %v", errStr)
-		}
+	if !errors.Is(err, errSave) {
+		t.Errorf("Erro joinado deve conter errSave, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "return error") {
-		t.Errorf("Erro joinado deve conter 'return error', got %v", err)
+	if !errors.Is(err, errReturn) {
+		t.Errorf("Erro joinado deve conter errReturn, got %v", err)
 	}
 }
