@@ -5,9 +5,10 @@
 **O quê:** Pré-requisito de Spec 005. Order.Expire (em domain/order/order.go) era idempotente. Mudar para retornar `ErrInvalidTransition` se o pedido não estiver pending. Impede Return duplicado em ExpirarPedidos.
 
 **Critério de aceite:**
-- [ ] `TestOrder_PE06_ExpireNotPendingReturnsError` — Expire em pedido não pending retorna ErrInvalidTransition (não nil)
-- [ ] Spec 002 (docs/specs/002-pedido/spec.md) atualizada: PE-06 documenta novo comportamento
-- [ ] `make check` passa
+- [x] `TestOrder_PE06_ExpireNotPendingReturnsError` — Expire em pedido não pending retorna ErrInvalidTransition (não nil)
+- [x] `TestOrder_PE06_ExpireOnPaidOrderReturnsError` — Expire em pedido paid retorna ErrInvalidTransition
+- [x] Spec 002 (docs/specs/002-pedido/spec.md) atualizada: PE-06 documenta novo comportamento
+- [x] `make check` passa
 
 **Arquivo:** `internal/domain/order/order.go` + `order_test.go` + `docs/specs/002-pedido/spec.md`
 
