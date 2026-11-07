@@ -3,6 +3,7 @@ package ordering
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/icaroalbar/fullstore/internal/domain/order"
@@ -123,4 +124,63 @@ func (uc *OrderUseCases) CriarPedido(items []ItemInput) (*order.Order, error) {
 	}
 
 	return o, nil
+}
+
+// ExpirarPedidos expires old pending orders and returns their stock.
+// Processes all pending orders: expired (>30 min) transition to canceled with Return.
+// Ignores ErrNotExpired (order too new) and ErrInvalidTransition (order paid/canceled by race).
+// If Return fails, accumulates error with order ID. Processes all orders, never stops.
+// Returns errors.Join of real errors, or nil if none.
+func (uc *OrderUseCases) ExpirarPedidos() error {
+	// Capture now once at the start: all orders in this batch use the same expiration clock.
+	now := uc.clock.Now()
+
+	// List pending orders (returns copies, so decision is only valid inside Update, which is atomic).
+	pendidos, err := uc.orders.ListPending()
+	if err != nil {
+		return err
+	}
+
+	// Collect real errors (ErrNotExpired and ErrInvalidTransition are ignored, not errors).
+	var errs []error
+
+	for _, o := range pendidos {
+		var items []order.Item
+
+		// Update atômico: read order, call o.Expire(now), all under lock.
+		// Copy items INSIDE the function, before releasing the lock.
+		updateErr := uc.orders.Update(o.ID(), func(ord *order.Order) error {
+			items = ord.Items()
+			return ord.Expire(now)
+		})
+
+		// Ignore ErrNotExpired (order is new) and ErrInvalidTransition (order was paid/canceled between ListPending and Update — normal race).
+		// Any other error is real and accumulates with the order ID.
+		if updateErr != nil {
+			if errors.Is(updateErr, order.ErrNotExpired) || errors.Is(updateErr, order.ErrInvalidTransition) {
+				continue
+			}
+			// Real error: accumulate with order ID so operations can investigate.
+			errs = append(errs, fmt.Errorf("pedido %s: %w", o.ID(), updateErr))
+			continue
+		}
+
+		// Update succeeded: order was expired. Now return reserved stock.
+		stockItems := make([]stock.Item, len(items))
+		for i, item := range items {
+			stockItems[i] = stock.Item{
+				ProductID: item.ProductID,
+				Quantity:  item.Quantity,
+			}
+		}
+
+		returnErr := uc.stock.Return(stockItems)
+		if returnErr != nil {
+			// Return failed after successful Expire: stock is trapped. Accumulate error with order ID.
+			errs = append(errs, fmt.Errorf("pedido %s expirado, mas devolução falhou: %w", o.ID(), returnErr))
+		}
+	}
+
+	// Return errors.Join of all accumulated errors, or nil if none.
+	return errors.Join(errs...)
 }
