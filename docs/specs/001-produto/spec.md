@@ -50,6 +50,10 @@ O Produto é a entidade central do catálogo. Nasce desativado (draft) até ter 
 | Tentar usar produto disabled em pedido | `ErrProductUnavailable` |
 | Tentar ativar sem preço válido | `ErrInvalidPrice` |
 
+## Notas de implementação
+
+**PR-04 (Indisponibilidade):** O domínio implementa `IsAvailable()` (verificar se produto está ativo). O erro `ErrProductUnavailable` é responsabilidade da camada de casos de uso (quando tentar reservar estoque de um produto disabled). O domínio não lança esse erro — apenas fornece o getter.
+
 ## Fora do escopo
 - Multimoeda
 - Frontend
