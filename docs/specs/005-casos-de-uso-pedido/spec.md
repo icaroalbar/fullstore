@@ -54,7 +54,7 @@ Os agregados Produto, Pedido e Estoque já aplicam suas próprias regras, mas na
 | --- | --- |
 | **Porta InventoryPort com Reserve/Return de lista** | Preserva tudo-ou-nada do estoque: sem reserva parcial (ES-02) |
 | **Ordem CriarPedido: catálogo → NewOrder → Reserve → gravar** | Validações baratas antes, efeitos colaterais por último; só gravação compensa (Return) |
-| **ExpirarPedidos recebe `agora` (clock)** | Caso de uso stateless; gatilho (job/HTTP) fora de escopo |
+| **ExpirarPedidos usa o relógio injetado** | Caso de uso stateless; gatilho (job/HTTP) fora de escopo |
 | **Order.Expire marca canceled com expiredAt** | Usa o mesmo status canceled mas registra quando expirou (PE-06) |
 | **Order.Expire retorna ErrInvalidTransition se não pending** | Impede Return duplicado; Expire fica idempotente com segurança (pré-requisito spec 002) |
 | **CancelarPedido valida Order.Cancel() antes de Return** | Evita Return duplicado; Inventory não é idempotente |

@@ -46,30 +46,31 @@
 
 ---
 
-## T004: CancelarPedido validações e devolução (Cenários 06-08b, ES-03, PE-05)
+## T004: CancelarPedido com Update atômico (Cenários 06-08b, ES-03, PE-05)
 
-**O quê:** Implementar `CancelarPedido(orderID string) error` com ordem: 1) Get pedido, 2) Cancel (memória), 3) Save, 4) Return. Se Save falha, não chamar Return (sem efeito colateral órfão).
+**O quê:** Implementar `CancelarPedido(orderID string) error` com Update atômico: `repo.Update(orderID, func(o *order.Order) error { return o.Cancel() })`. Depois: Return. Se Update falha (ErrOrderNotFound, ErrInvalidTransition), não chamar Return.
 
 **Critério de aceite:**
-- [ ] `TestCancelarPedido_06_ES03_CancelaPending` — pending → canceled, Return chamado, estoque devolvido
-- [ ] `TestCancelarPedido_07_PE05_CancelaPago` — pago → ErrInvalidTransition (de Order.Cancel), sem Return
-- [ ] `TestCancelarPedido_08_CancelaCancelado` — já canceled → ErrInvalidTransition, sem Return duplicado
-- [ ] `TestCancelarPedido_08b_PedidoInexistente` — inexistente → ErrOrderNotFound (antes de Cancel)
-- [ ] `TestCancelarPedido_SaveFaila` — Save falha após Cancel, Return não chamado
+- [ ] `TestCancelarPedido_06_ES03_CancelaPending` — Update ok, Return chamado, estoque devolvido
+- [ ] `TestCancelarPedido_07_PE05_CancelaPago` — Update retorna ErrInvalidTransition (de o.Cancel), sem Return
+- [ ] `TestCancelarPedido_08_CancelaCancelado` — Update retorna ErrInvalidTransition, sem Return duplicado
+- [ ] `TestCancelarPedido_08b_PedidoInexistente` — Update retorna ErrOrderNotFound, sem Return
+- [ ] `TestCancelarPedido_UpdateFaila` — Update falha, Return não chamado
 - [ ] `make check` passa
 
 **Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
 
 ---
 
-## T005: ExpirarPedidos com clock (Cenários 09-10, PE-06, ES-03)
+## T005: ExpirarPedidos com Update + clock (Cenários 09-10, PE-06, ES-03)
 
-**O quê:** Implementar `ExpirarPedidos() error` que: 1) lista pending, 2) para cada: Get, Expire(clock.Now()), Save, Return. Se Return falha, acumula erro com ID do pedido. Propaga errors.Join de todos os erros. Sem parar no primeiro erro.
+**O quê:** Implementar `ExpirarPedidos() error` que: 1) lista pending (cópias), 2) para cada: `Update(id, func(o *order.Order) error { return o.Expire(clock.Now()) })`, 3) Return. Se o.Expire retorna ErrNotExpired (pedido novo), ignorar (não é erro). Se Return falha, acumula erro com ID. Propaga errors.Join de erros reais. Sem parar no erro.
 
 **Critério de aceite:**
 - [ ] `TestExpirarPedidos_09_PE06_ExpiraAntigosDevolvePending` — >30 min → expired (canceled com expiredAt), Return chamado
-- [ ] `TestExpirarPedidos_09b_NaoExpiraJaCancelado` — já cancelado → ErrInvalidTransition (de Expire), sem Return
+- [ ] `TestExpirarPedidos_09b_NaoExpiraJaCancelado` — já cancelado → ErrInvalidTransition (de o.Expire), sem Return
 - [ ] `TestExpirarPedidos_10_ReturnFailaAcumulaErro` — Return falha, erro acumulado com ID, demais processados, errors.Join propagado
+- [ ] `TestExpirarPedidos_MistoNovoEAntigo` — pendidos novos + antigos; antigos expiram+devolvem, novos ignorados, erro vazio (sem erros reais)
 - [ ] `make check` passa
 
 **Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
@@ -78,11 +79,10 @@
 
 ## T006: Teste do problema conhecido (Return falha após Cancel/Expire)
 
-**O quê:** Cenários 04 (Save falha em CriarPedido) e 10 (Return falha em ExpirarPedidos) já testam compensações bem-sucedidas. Aqui: demonstrar o problema: se Order.Cancel/Expire der OK, Save OK, mas Return falha, a reserva fica presa. Erro deve ser propagado com ID do pedido.
+**O quê:** Demonstrar: se Order.Cancel/Expire der OK, Update OK, mas Return falha, a reserva fica presa. Erro deve ser propagado com ID do pedido. T005 já testa erro acumulado em ExpirarPedidos; aqui: teste explícito de CancelarPedido com Return falha.
 
 **Critério de aceite:**
-- [ ] `TestCancelarPedido_ReturnFails_PropagaErroComID` — Cancel OK, Save OK, Return falha; erro propagado contém ID do pedido
-- [ ] `TestExpirarPedidos_ReturnFailaAcumulado` — Expire OK, Save OK, Return falha; erro acumulado em errors.Join com ID
+- [ ] `TestCancelarPedido_ReturnFails_PropagaErroComID` — Update ok (o.Cancel() ok), Return falha; erro propagado contém ID do pedido
 - [ ] Comentário no código: "Estoque fica preso; operacional rastreia pelo ID e manualmente compensa"
 - [ ] `make check` passa
 
@@ -92,10 +92,10 @@
 
 ## T007: Concorrência — dois cancelamentos simultâneos (ES-05 pattern)
 
-**O quê:** Tarefa extra: verificar que dois CancelarPedido simultâneos no mesmo pedido não causam Return duplicado. Um ganha a transição (pending → canceled), outro falha com ErrInvalidTransition. Apenas um Return chamado. Teste com -race.
+**O quê:** Tarefa extra: verificar que Update serializa: dois CancelarPedido simultâneos no mesmo pedido, um ganha a transição (pending → canceled), outro falha com ErrInvalidTransition. Apenas um Return chamado. Teste com -race.
 
 **Critério de aceite:**
-- [ ] `TestCancelarPedido_RaceCondition_DoisCancelamentosSimultaneos` — 50 goroutines (canal start), todos tentam cancelar o mesmo pending; 1 sucesso (Return 1×), 49 falham com ErrInvalidTransition (sem Return)
+- [ ] `TestCancelarPedido_RaceCondition_DoisCancelamentosSimultaneos` — 50 goroutines (canal start), todos tentam `repo.Update` do mesmo pending; 1 sucesso (o.Cancel ok, Return 1×), 49 falham com ErrInvalidTransition (o.Cancel retorna erro, sem Return)
 - [ ] `go test -race ./internal/usecase/ordering` passa sem data races
 - [ ] `make check` passa
 
