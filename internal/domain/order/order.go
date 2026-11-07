@@ -175,11 +175,8 @@ func (o *Order) IsExpired(now time.Time) bool {
 }
 
 // Expire muda o status para "canceled" se expirado (PE-06).
+// Retorna ErrInvalidTransition se o pedido não está pending (inclusive já cancelado).
 func (o *Order) Expire(now time.Time) error {
-	// Idempotente: se já estiver canceled, apenas retorna sucesso
-	if o.status == StatusCanceled {
-		return nil
-	}
 	if o.status != StatusPending {
 		return ErrInvalidTransition
 	}

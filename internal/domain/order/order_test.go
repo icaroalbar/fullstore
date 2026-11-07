@@ -394,21 +394,23 @@ func TestOrder_PE06_ExpireTransitionsToCanceled(t *testing.T) {
 	}
 }
 
-func TestOrder_PE06_ExpireIdempotent(t *testing.T) {
+func TestOrder_PE06_ExpireNotPendingReturnsError(t *testing.T) {
 	createdAt := time.Date(2025, 6, 15, 10, 0, 0, 0, time.UTC)
 	items := []Item{{ProductID: "p1", Quantity: 1, Price: 100}}
 	o, _ := NewOrder(items, createdAt)
 
 	now := createdAt.Add(31 * time.Minute)
+	// First Expire: should succeed, order becomes canceled
 	if err := o.Expire(now); err != nil {
 		t.Errorf("first Expire should not error, got %v", err)
 	}
 
-	// Chamar Expire novamente deve ser idempotente
+	// Second Expire: order is no longer pending, should return ErrInvalidTransition
 	err := o.Expire(now)
-	if err != nil {
-		t.Errorf("second Expire should not error, got %v", err)
+	if err != ErrInvalidTransition {
+		t.Errorf("Expire on non-pending order should return ErrInvalidTransition, got %v", err)
 	}
+	// Verify status remains canceled
 	if o.Status() != StatusCanceled {
 		t.Errorf("status should remain canceled, got %v", o.Status())
 	}
