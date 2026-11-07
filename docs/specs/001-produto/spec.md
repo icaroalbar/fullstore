@@ -1,6 +1,6 @@
 # Spec 001: Produto (Catálogo)
 
-Status: aprovada
+Status: implementada
 Etapa: 1
 Regras cobertas: PR-01, PR-02, PR-03, PR-04, PR-05, PR-06
 
