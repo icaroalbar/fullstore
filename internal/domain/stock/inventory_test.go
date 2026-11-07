@@ -527,11 +527,13 @@ func TestInventory_ES05_RaceCondition(t *testing.T) {
 	failureCount := 0
 	var mu sync.Mutex
 
+	start := make(chan struct{})
 	var wg sync.WaitGroup
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			<-start
 			err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 1}})
 			mu.Lock()
 			switch err {
@@ -543,6 +545,7 @@ func TestInventory_ES05_RaceCondition(t *testing.T) {
 			mu.Unlock()
 		}()
 	}
+	close(start)
 	wg.Wait()
 
 	if successCount != 10 {
@@ -586,12 +589,14 @@ func TestInventory_ES05_ConcurrentReads(t *testing.T) {
 		t.Errorf("Replenish should not error, got %v", err)
 	}
 
+	start := make(chan struct{})
 	var wg sync.WaitGroup
 
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			<-start
 			_ = inv.Reserve([]Item{{ProductID: "p1", Quantity: 1}})
 		}()
 	}
@@ -600,11 +605,13 @@ func TestInventory_ES05_ConcurrentReads(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			<-start
 			_, _ = inv.Available("p1")
 			_, _ = inv.Reserved("p1")
 		}()
 	}
 
+	close(start)
 	wg.Wait()
 
 	available, _ := inv.Available("p1")
