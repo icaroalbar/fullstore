@@ -139,9 +139,8 @@ func (inv *Inventory) Reserve(items []Item) error {
 }
 
 // validateAndAggregate validates items and returns a map of aggregated quantities per product.
-// Phase 1: validate all items (quantity > 0, product exists).
-// Returns aggregated quantities if all valid, or an error if any validation fails.
-// This helper is used by both Return and Deduct (all-or-nothing pattern).
+// Shared by Reserve (checks available), Return & Deduct (check reserved).
+// Validates all items before returning (fail-fast on first error, all-or-nothing pattern).
 func (inv *Inventory) validateAndAggregate(items []Item) (map[string]int32, error) {
 	if len(items) == 0 {
 		return make(map[string]int32), nil
@@ -165,9 +164,7 @@ func (inv *Inventory) validateAndAggregate(items []Item) (map[string]int32, erro
 }
 
 // Return attempts to return reserved quantities for a list of items.
-// Validates all items before making any changes (all-or-nothing).
-// Phase 1 & 2: validate and aggregate (via helper).
-// Phase 3: validate reserved is enough, then apply (increment available, decrement reserved).
+// Used when pedido is canceled or expired: increment available, decrement reserved (all-or-nothing).
 func (inv *Inventory) Return(items []Item) error {
 	if len(items) == 0 {
 		return nil
@@ -200,9 +197,7 @@ func (inv *Inventory) Return(items []Item) error {
 }
 
 // Deduct attempts to deduct reserved quantities permanently for a list of items.
-// Validates all items before making any changes (all-or-nothing).
-// Phase 1 & 2: validate and aggregate (via helper).
-// Phase 3: validate reserved is enough, then apply (decrement reserved only).
+// Used when payment is approved: decrement reserved only (available already decremented on Reserve, all-or-nothing).
 func (inv *Inventory) Deduct(items []Item) error {
 	if len(items) == 0 {
 		return nil
