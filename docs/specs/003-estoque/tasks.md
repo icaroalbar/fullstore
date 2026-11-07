@@ -72,9 +72,9 @@
 **O quê:** Verificar cobertura do pacote domain/stock, confirmar >= 80%, atualizar spec.md para Status: implementada.
 
 **Critério de aceite:**
-- [ ] `go test -cover ./internal/domain/stock` mostra >= 80%
-- [ ] Spec 003: Status mudado para `implementada`
-- [ ] `make check` passa (vet + lint + test -race -cover)
+- [x] `go test -cover ./internal/domain/stock` mostra >= 80% (94.9%)
+- [x] Spec 003: Status mudado para `implementada`
+- [x] `make check` passa (vet + lint + test -race -cover)
 
 **Arquivo:** `docs/specs/003-estoque/spec.md`
 
