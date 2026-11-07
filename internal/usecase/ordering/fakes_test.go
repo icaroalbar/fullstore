@@ -77,7 +77,7 @@ func (f *OrderRepositoryFake) Save(o *order.Order) error {
 	if f.err != nil {
 		return f.err
 	}
-	// Defensive copy
+	// Store the order under lock
 	f.orders[o.ID()] = o
 	return nil
 }
@@ -95,12 +95,8 @@ func (f *OrderRepositoryFake) Update(orderID string, fn func(*order.Order) error
 		return ErrOrderNotFound
 	}
 
-	// Call function; if it fails, order is not modified
-	// (order state modifications happen in-place, so we can't easily rollback)
-	// In production, this would use transactions or event sourcing
+	// Run function under lock on the stored order
 	err := fn(o)
-
-	// Success: order already updated in place
 	return err
 }
 

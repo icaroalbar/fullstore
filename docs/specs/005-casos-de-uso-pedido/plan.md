@@ -94,5 +94,5 @@ func (uc *OrderUseCases) ExpirarPedidos() error  // usa clock injetável
 
 - **Return falha após Cancel/Expire bem-sucedido:** Estoque fica reservado preso. Mitigação: teste T006 demonstra; erro propagado com ID do pedido para operacional investigar.
 - **Order.Expire mudança em Spec 002:** Pré-requisito; testa antes de ativar Spec 005 (T001).
-- **Concorrência em OrderRepository:** Mitigação: Update(orderID, fn) serializa com mutex em memória (etapa 1) ou SELECT FOR UPDATE no banco (etapa 2+). Tarefa T007: teste com -race de dois CancelarPedido simultâneos — um ganha transição, outro falha com ErrInvalidTransition; um único Return chamado.
+- **Concorrência em OrderRepository:** Mitigação: Update(orderID, fn) roda a função sob lock no pedido guardado (etapa 1, fake/memória); banco usa SELECT FOR UPDATE (etapa 2+). Tarefa T007: teste com -race de dois CancelarPedido simultâneos — um ganha transição, outro falha com ErrInvalidTransition; um único Return chamado.
 - **ListPending devolve cópias:** Slices copiadas, não referências — mudanças no cliente não afetam estado interno.

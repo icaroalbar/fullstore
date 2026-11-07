@@ -16,17 +16,18 @@
 
 ## T002: Portas e erros do caso de uso (ES-01, ES-02, ES-03)
 
-**O quê:** Struct `OrderUseCases`, construtor, injeção de 4 portas (ProductCatalog, OrderRepository, InventoryPort, Clock). Erros em var block. Adaptadores falsos (fakes) nos testes.
+**O quê:** Struct `OrderUseCases`, construtor, injeção de 4 portas (ProductCatalog, OrderRepository, InventoryPort, Clock). Erros em var block. Adaptadores falsos (fakes) nos testes com thread-safety.
 
 **Critério de aceite:**
-- [ ] `internal/usecase/ordering/order.go` criado com construtor
-- [ ] Portas: ProductCatalog, OrderRepository (*order.Order), InventoryPort, Clock
-- [ ] Erros em var: ErrProductNotFound, ErrProductUnavailable, ErrOrderNotFound
-- [ ] ItemInput struct: ProductID, Quantity
-- [ ] Fakes completos para todas as portas (ProductCatalogFake, OrderRepositoryFake, InventoryPortFake, ClockFake)
-- [ ] `make check` passa
+- [x] `internal/usecase/ordering/order.go` criado com construtor
+- [x] Portas: ProductCatalog (*product.Product), OrderRepository (*order.Order), InventoryPort, Clock
+- [x] Erros em var: ErrProductNotFound, ErrProductUnavailable, ErrOrderNotFound
+- [x] ItemInput struct: ProductID, Quantity (int32)
+- [x] Fakes em `fakes_test.go`: ProductCatalogFake, OrderRepositoryFake, InventoryPortFake, ClockFake com mutex
+- [x] Testes dos fakes: Reserve tudo-ou-nada, Update transacional, Save/Return sem panic
+- [x] `make check` passa (100% cobertura)
 
-**Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
+**Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go` + `fakes_test.go`
 
 ---
 
