@@ -1,6 +1,6 @@
 # Tasks F01: Catálogo de produtos
 
-## T001: Setup do projeto Vite + shadcn + make targets (30 min)
+## ✅ T001: Setup do projeto Vite + shadcn + make targets (CONCLUÍDA)
 **Regras:** nenhuma regra diretamente, mas infraestrutura obrigatória para as tarefas seguintes.
 
 Na raiz do repo:
