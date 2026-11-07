@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/icaroalbar/fullstore/internal/domain/order"
+	"github.com/icaroalbar/fullstore/internal/domain/product"
 	"github.com/icaroalbar/fullstore/internal/domain/stock"
 )
 
@@ -95,5 +96,232 @@ func TestInventoryPortFake_ReturnNaoPanic(t *testing.T) {
 	err := fake.Return(items)
 	if err != nil {
 		t.Errorf("Return should not error, got %v", err)
+	}
+}
+
+// T003: CriarPedido validações e reserva (cenários 01-05)
+
+func TestCriarPedido_01_ES01_ReservaEstoque(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+
+	if err != nil {
+		t.Errorf("CriarPedido com produtos ativos deve suceder, got %v", err)
+	}
+	if o == nil {
+		t.Errorf("CriarPedido deve retornar order não-nil")
+	}
+
+	// Verificar reserva: 100 - 5 = 95 disponíveis
+	if inventoryFake.GetStock("prod1") != 95 {
+		t.Errorf("Estoque deve ter sido reservado; esperado 95, got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestCriarPedido_02_PR04_ProdutoDesativado(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	// Não ativar (status desativado)
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+
+	if err != ErrProductUnavailable {
+		t.Errorf("CriarPedido com produto desativado deve retornar ErrProductUnavailable, got %v", err)
+	}
+	if o != nil {
+		t.Errorf("CriarPedido com erro não deve retornar order, got %v", o)
+	}
+
+	// Verificar que nada foi reservado
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Errorf("Estoque não deve ter sido alterado, got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestCriarPedido_03_ES02_SemEstoque(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	p2, _ := product.NewProduct("prod2", 5000, time.Now())
+	if err := p2.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+	catalogFake.SetProductByID("prod2", p2)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 10)
+	inventoryFake.SetStock("prod2", 3) // Não há 5 de prod2
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}, {ProductID: "prod2", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+
+	if err != stock.ErrInsufficientStock {
+		t.Errorf("CriarPedido sem estoque deve retornar ErrInsufficientStock, got %v", err)
+	}
+	if o != nil {
+		t.Errorf("CriarPedido com erro não deve retornar order")
+	}
+
+	// Verificar tudo-ou-nada: nada foi reservado
+	if inventoryFake.GetStock("prod1") != 10 {
+		t.Errorf("prod1 não deve ter sido alterado (tudo-ou-nada), got %d", inventoryFake.GetStock("prod1"))
+	}
+	if inventoryFake.GetStock("prod2") != 3 {
+		t.Errorf("prod2 não deve ter sido alterado (tudo-ou-nada), got %d", inventoryFake.GetStock("prod2"))
+	}
+}
+
+func TestCriarPedido_04_SaveFaila(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	orderRepoFake.SetError(errors.New("save error"))
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+
+	if err == nil {
+		t.Errorf("CriarPedido com Save falho deve retornar erro")
+	}
+	if o != nil {
+		t.Errorf("CriarPedido com erro não deve retornar order")
+	}
+
+	// Verificar que Return foi chamado (estoque restaurado)
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Errorf("Estoque deve ter sido devolvido (compensação), got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestCriarPedido_04b_PedidoInvalido(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Pedido com quantidade inválida (0)
+	items := []ItemInput{{ProductID: "prod1", Quantity: 0}}
+	o, err := uc.CriarPedido(items)
+
+	if err == nil {
+		t.Errorf("CriarPedido com pedido inválido deve retornar erro")
+	}
+	if o != nil {
+		t.Errorf("CriarPedido com erro não deve retornar order")
+	}
+
+	// Verificar que nada foi reservado
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Errorf("Estoque não deve ter sido alterado, got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestCriarPedido_05_ProdutoInexistente(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	// Não adicionar produto prod1
+	catalogFake.SetError(ErrProductNotFound) // Simula erro de busca
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+
+	if err != ErrProductNotFound {
+		t.Errorf("CriarPedido com produto inexistente deve retornar ErrProductNotFound, got %v", err)
+	}
+	if o != nil {
+		t.Errorf("CriarPedido com erro não deve retornar order")
+	}
+}
+
+func TestCriarPedido_04c_SaveEReturnFalham(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	errSave := errors.New("save error")
+	errReturn := errors.New("return error")
+
+	orderRepoFake := NewOrderRepositoryFake()
+	orderRepoFake.SetError(errSave)
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	inventoryFake.SetReturnError(errReturn)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+
+	if err == nil {
+		t.Errorf("CriarPedido com Save e Return falhando deve retornar erro")
+	}
+	if o != nil {
+		t.Errorf("CriarPedido com erro não deve retornar order")
+	}
+
+	// Verificar que errors.Join retorna ambos os erros
+	if !errors.Is(err, errSave) {
+		t.Errorf("Erro joinado deve conter errSave, got %v", err)
+	}
+	if !errors.Is(err, errReturn) {
+		t.Errorf("Erro joinado deve conter errReturn, got %v", err)
 	}
 }
