@@ -6,22 +6,25 @@ Regras cobertas: ES-01, ES-02, ES-03, ES-04, ES-05
 
 ## Contexto
 
-Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobrevenda. Cada produto tem duas quantidades: disponível (pode vender agora) e reservado (em pedidos pending). Quando o pedido é pago, a reserva vira baixa definitiva. Se o pedido expira ou é cancelado, a reserva volta.
+Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobrevenda. Stock é um agregado separado de Product: cada estoque rastreia um produto via seu ID e mantém duas quantidades: disponível (pode vender agora) e reservado (em pedidos pending). Estoque inicial entra via Replenish. Quando o pedido é pago, a reserva vira baixa definitiva. Se o pedido expira ou é cancelado, a reserva volta.
 
 ## Comportamento esperado
 
-- **ES-01**: Dado produto com 10 disponível, quando crio pedido com 3 unidades, então disponível = 7, reservado = 3
-- **ES-02a**: Dado produto com 2 disponível, quando tento pedido com 5 unidades, então retorna ErrInsufficientStock e estoque permanece 2/0
-- **ES-02b**: Dado Notebook (10 disp), Mouse (2 disp), quando tento pedido com Notebook×3 + Mouse×5, então nada é reservado
-- **ES-03**: Dado pedido com Notebook reservado 3, quando cancelo, então Notebook volta a 10 disponível, 0 reservado
-- **ES-04**: Dado pedido com Notebook reservado 3, quando pagamento aprovado, então reservado = 0 (3 vendidas de vez)
-- **ES-05**: Dado produto com 10 unidades, quando 50 goroutines tentam comprar simultaneamente, então exatamente 10 aceitas, 40 com ErrInsufficientStock
+- **ES-01**: Dado estoque com 10 disponível, quando reservo pedido com 3 unidades, então disponível = 7, reservado = 3
+- **ES-02a**: Dado estoque com 2 disponível, quando tento reservar 5 unidades, então retorna ErrInsufficientStock e estoque permanece 2/0
+- **ES-02b**: Dado Notebook (10 disp), Mouse (2 disp), quando tento reservar pedido com Notebook×3 + Mouse×5, então nada é reservado
+- **ES-03a**: Dado pedido com Notebook reservado 3, quando cancelo o pedido, então devolvo a reserva e Notebook volta a 10 disponível, 0 reservado
+- **ES-03b**: Dado pedido com Notebook reservado 3, quando o pedido expira, então devolvo a reserva e Notebook volta a 10 disponível, 0 reservado
+- **ES-04**: Dado pedido com Notebook reservado 3, quando o pagamento é aprovado, então baixo a reserva de vez e Notebook fica 7 disponível, 0 reservado
+- **ES-05**: Dado estoque com 10 unidades, quando 50 requisições simultâneas cada uma tenta comprar 1 unidade, então exatamente 10 são aceitas e reservado = 10, disponível = 0
 
 ## Casos de erro
 
 | Situação | Erro esperado |
 | --- | --- |
-| Reserve: item sem estoque suficiente | ErrInsufficientStock |
+| Reserve: item sem estoque suficiente (soma de quantidade) | ErrInsufficientStock |
+| Reserve: quantidade <= 0 em qualquer item | ErrInvalidQuantity |
+| Reserve: mesmo produto repetido no pedido | soma as quantidades antes de validar |
 | Return: devolver mais do que foi reservado | ErrInvalidOperation |
 | Deduct: baixar mais do que foi reservado | ErrInvalidOperation |
 | Replenish: quantidade <= 0 | ErrInvalidQuantity |
@@ -29,21 +32,21 @@ Quando um cliente compra, o estoque deve ser reservado na hora para evitar sobre
 
 ## Decisões de design
 
-- **Estrutura**: Cada produto tem dois campos: `disponível` (int32) e `reservado` (int32)
-- **Estoque inicial**: NewProduct recebe quantidade inicial como parâmetro
-- **Reposição**: Método Replenish(productID, quantidade) adiciona ao disponível
-- **Tudo ou nada**: Reserve valida todos os itens antes de mudar qualquer quantidade
-  - Quando um pedido tem múltiplos produtos, Reserve deve falhar atomicamente se qualquer item não tiver estoque
-  - Responsabilidade: quem chama Reserve (use case Order) deve passar todos os itens de uma vez
-- **Erro de estoque**: ErrInsufficientStock quando não há quantidade suficiente
+- **Agregado Stock**: Separado de Product; rastreia um produto por ID e mantém disponível + reservado
+- **Estoque inicial**: Entra via Replenish (não em NewProduct)
+- **Tudo ou nada**: Reserve valida todos os itens do pedido antes de mudar qualquer quantidade
+  - Se um item faltar, nenhum é reservado
+  - Se mesmo produto aparece repetido, soma as quantidades antes de validar
+  - Responsabilidade: use case Order passa todos os itens de uma vez
+- **Validações**: quantidade <= 0 retorna erro antes de qualquer mudança
 
 ## Operações de Stock
 
-- **Reserve(itens []Item) error** — reserva para um pedido (ES-01, ES-02)
-- **Return(itens []Item) error** — devolve uma reserva (ES-03)
-- **Deduct(itens []Item) error** — baixa reservado de vez (ES-04)
-- **Replenish(productID, quantidade int32) error** — adiciona ao disponível
-- **Getters**: Available(productID), Reserved(productID)
+- **Reserve**: Reserva itens de um pedido (valida tudo antes de mudar)
+- **Return**: Devolve uma reserva (quando pedido é cancelado ou expira)
+- **Deduct**: Baixa reservado de vez (quando pagamento é aprovado)
+- **Replenish**: Adiciona ao disponível (reposição, estoque inicial)
+- **Getters**: Consulta de disponível e reservado por produto
 
 ## Fora do escopo
 
