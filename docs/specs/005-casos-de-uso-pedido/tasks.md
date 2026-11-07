@@ -36,13 +36,14 @@
 **O quê:** Implementar `CriarPedido([]ItemInput) (*order.Order, error)` com ordem: 1) buscar produtos (catálogo), 2) NewOrder memória (preços buscados), 3) Reserve, 4) Save. Se (4) falha, chamar Return (compensação). Propagar stock.ErrInsufficientStock (não redeclarar).
 
 **Critério de aceite:**
-- [ ] `TestCriarPedido_01_ES01_ReservaEstoque` — produtos ativos, estoque reservado
-- [ ] `TestCriarPedido_02_PR04_ProdutoDesativado` — ErrProductUnavailable, sem Reserve
-- [ ] `TestCriarPedido_03_ES02_SemEstoque` — stock.ErrInsufficientStock, tudo-ou-nada
-- [ ] `TestCriarPedido_04_SaveFaila` — Save falha, Return chamado, erro propagado
-- [ ] `TestCriarPedido_04b_PedidoInvalido` — NewOrder inválido (PE-01-03), sem Reserve
-- [ ] `TestCriarPedido_05_ProdutoInexistente` — ErrProductNotFound, sem efeito
-- [ ] `make check` passa
+- [x] `TestCriarPedido_01_ES01_ReservaEstoque` — produtos ativos, estoque reservado
+- [x] `TestCriarPedido_02_PR04_ProdutoDesativado` — ErrProductUnavailable, sem Reserve
+- [x] `TestCriarPedido_03_ES02_SemEstoque` — stock.ErrInsufficientStock, tudo-ou-nada
+- [x] `TestCriarPedido_04_SaveFaila` — Save falha, Return chamado, erro propagado
+- [x] `TestCriarPedido_04b_PedidoInvalido` — NewOrder inválido (PE-01-03), sem Reserve
+- [x] `TestCriarPedido_04c_SaveEReturnFalham` — Save e Return falham, errors.Join(saveErr, returnErr)
+- [x] `TestCriarPedido_05_ProdutoInexistente` — ErrProductNotFound, sem efeito
+- [x] `make check` passa (com -race)
 
 **Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
 
