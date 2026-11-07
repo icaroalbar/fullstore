@@ -1,6 +1,6 @@
 # Spec 001: Produto (Catálogo)
 
-Status: aprovada
+Status: implementada
 Etapa: 1
 Regras cobertas: PR-01, PR-02, PR-03, PR-04, PR-05, PR-06
 
@@ -49,6 +49,10 @@ O Produto é a entidade central do catálogo. Nasce desativado (draft) até ter 
 | Preço ≤ 0 (NewProduct ou ChangePrice) | `ErrInvalidPrice` |
 | Tentar usar produto disabled em pedido | `ErrProductUnavailable` |
 | Tentar ativar sem preço válido | `ErrInvalidPrice` |
+
+## Notas de implementação
+
+**PR-04 (Indisponibilidade):** O domínio implementa `IsAvailable()` (verificar se produto está ativo). O erro `ErrProductUnavailable` é responsabilidade da camada de casos de uso (quando tentar reservar estoque de um produto disabled). O domínio não lança esse erro — apenas fornece o getter.
 
 ## Fora do escopo
 - Multimoeda
