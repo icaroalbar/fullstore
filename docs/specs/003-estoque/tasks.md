@@ -20,12 +20,12 @@
 **O quê:** Implementar Reserve(items []Item) que valida tudo antes de mudar quantidades. Retorna ErrInsufficientStock se faltar, ErrInvalidQuantity se qty≤0, soma produtos repetidos.
 
 **Critério de aceite:**
-- [ ] `TestInventory_ES01_ReserveDecrementsAvailable` — Reserve([{p1, 3}]) em p1=10 → available=7, reserved=3
-- [ ] `TestInventory_ES02_InsufficientStock` — Reserve([{p1, 15}]) em p1=10 → ErrInsufficientStock, nada muda
-- [ ] `TestInventory_ReserveInvalidQuantity` — Reserve com qty ≤ 0 → ErrInvalidQuantity
-- [ ] `TestInventory_ReserveMultipleItems` — Reserve([{p1,3}, {p2,2}]) funciona
-- [ ] `TestInventory_ReserveProductRepetition` — Reserve([{p1,2}, {p1,3}]) soma para 5 antes de validar
-- [ ] `TestInventory_ES02b_AtomicFail` — Reserve([{p1,3}, {p2,15}]) com p2=10 → nada é reservado (tudo-ou-nada)
+- [x] `TestInventory_ES01_ReserveDecrementsAvailable` — Reserve([{p1, 3}]) em p1=10 → available=7, reserved=3
+- [x] `TestInventory_ES02_InsufficientStock` — Reserve([{p1, 15}]) em p1=10 → ErrInsufficientStock, nada muda
+- [x] `TestInventory_ReserveInvalidQuantity` — Reserve com qty ≤ 0 → ErrInvalidQuantity
+- [x] `TestInventory_ReserveMultipleItems` — Reserve([{p1,3}, {p2,2}]) funciona
+- [x] `TestInventory_ReserveProductRepetition` — Reserve([{p1,2}, {p1,3}]) soma para 5 antes de validar
+- [x] `TestInventory_ES02b_AtomicFail` — Reserve([{p1,3}, {p2,15}]) com p2=10 → nada é reservado (tudo-ou-nada)
 
 **Arquivo:** `internal/domain/stock/inventory.go` + `inventory_test.go`
 
@@ -36,18 +36,18 @@
 **O quê:** Implementar Return(items []Item) e Deduct(items []Item). Ambos validam tudo antes de mudar, rejeitam qty≤0, retornam ErrInvalidOperation se quantidade > reservado.
 
 **Critério de aceite:**
-- [ ] `TestInventory_ES03a_ReturnAfterCancel` — Reserve([{p1,3}]), depois Return([{p1,3}]) → available=10, reserved=0
-- [ ] `TestInventory_ES03b_ReturnAfterExpire` — mesmo resultado
-- [ ] `TestInventory_ReturnInvalidQuantity` — Return com qty ≤ 0 → ErrInvalidQuantity
-- [ ] `TestInventory_ReturnProductNotFound` — Return([{unknown, 1}]) → ErrProductNotFound
-- [ ] `TestInventory_ReturnTooMuch` — Return([{p1,5}]) quando reserved=3 → ErrInvalidOperation, nada muda
-- [ ] `TestInventory_ReturnProductRepetition` — Return([{p1,2}, {p1,3}]) soma para 5 antes de validar
-- [ ] `TestInventory_ReturnAtomicFail` — Return([{p1,3}, {p2,15}]) com p2 reserved=10 → tudo-ou-nada, nada muda
-- [ ] `TestInventory_ES04_DeductAfterPay` — Reserve([{p1,3}]) → available=7,reserved=3; Deduct([{p1,3}]) → available=7,reserved=0
-- [ ] `TestInventory_DeductInvalidQuantity` — Deduct com qty ≤ 0 → ErrInvalidQuantity
-- [ ] `TestInventory_DeductProductNotFound` — Deduct([{unknown, 1}]) → ErrProductNotFound
-- [ ] `TestInventory_DeductProductRepetition` — Deduct([{p1,2}, {p1,3}]) soma para 5 antes de validar
-- [ ] `TestInventory_DeductInvalidOperation` — Deduct([{p1,5}]) quando reserved=3 → ErrInvalidOperation
+- [x] `TestInventory_ES03a_ReturnAfterCancel` — Reserve([{p1,3}]), depois Return([{p1,3}]) → available=10, reserved=0
+- [x] `TestInventory_ES03b_ReturnAfterExpire` — mesmo resultado
+- [x] `TestInventory_ReturnInvalidQuantity` — Return com qty ≤ 0 → ErrInvalidQuantity
+- [x] `TestInventory_ReturnProductNotFound` — Return([{unknown, 1}]) → ErrProductNotFound
+- [x] `TestInventory_ReturnTooMuch` — Return([{p1,5}]) quando reserved=3 → ErrInvalidOperation, nada muda
+- [x] `TestInventory_ReturnProductRepetition` — Return([{p1,2}, {p1,3}]) soma para 5 antes de validar
+- [x] `TestInventory_ReturnAtomicFail` — Return([{p1,3}, {p2,15}]) com p2 reserved=10 → tudo-ou-nada, nada muda
+- [x] `TestInventory_ES04_DeductAfterPay` — Reserve([{p1,3}]) → available=7,reserved=3; Deduct([{p1,3}]) → available=7,reserved=0
+- [x] `TestInventory_DeductInvalidQuantity` — Deduct com qty ≤ 0 → ErrInvalidQuantity
+- [x] `TestInventory_DeductProductNotFound` — Deduct([{unknown, 1}]) → ErrProductNotFound
+- [x] `TestInventory_DeductProductRepetition` — Deduct([{p1,2}, {p1,3}]) soma para 5 antes de validar
+- [x] `TestInventory_DeductTooMuch` — Deduct([{p1,5}]) quando reserved=3 → ErrInvalidOperation
 
 **Arquivo:** `internal/domain/stock/inventory.go` + `inventory_test.go`
 
