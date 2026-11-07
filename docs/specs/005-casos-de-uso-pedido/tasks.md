@@ -85,9 +85,9 @@
 **O quê:** Demonstrar: se Order.Cancel/Expire der OK, Update OK, mas Return falha, a reserva fica presa. Erro deve ser propagado com ID do pedido. T005 já testa erro acumulado em ExpirarPedidos; aqui: teste explícito de CancelarPedido com Return falha.
 
 **Critério de aceite:**
-- [ ] `TestCancelarPedido_ReturnFails_PropagaErroComID` — Update ok (o.Cancel() ok), Return falha; erro propagado contém ID do pedido
-- [ ] Comentário no código: "Estoque fica preso; operacional rastreia pelo ID e manualmente compensa"
-- [ ] `make check` passa
+- [x] `TestCancelarPedido_ReturnFails_PropagaErroComID` — Update ok (o.Cancel() ok), Return falha; erro propagado contém ID do pedido
+- [x] Comentário no código: "Estoque fica preso; operacional rastreia pelo ID e manualmente compensa"
+- [x] `make check` passa (93.3% coverage)
 
 **Arquivo:** `internal/usecase/ordering/order_test.go`
 
