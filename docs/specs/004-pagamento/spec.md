@@ -1,6 +1,6 @@
 # Spec 004: Pagamento
 
-Status: rascunho
+Status: aprovada
 Etapa: 1
 Regras cobertas: PG-01, PG-02, PG-04
 
