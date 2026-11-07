@@ -134,9 +134,10 @@ func (f *OrderRepositoryFake) GetForTest(orderID string) (*order.Order, error) {
 
 // InventoryPortFake implements InventoryPort for testing
 type InventoryPortFake struct {
-	stock map[string]int64
-	err   error
-	mu    sync.Mutex
+	stock     map[string]int64
+	err       error
+	returnErr error
+	mu        sync.Mutex
 }
 
 func NewInventoryPortFake() *InventoryPortFake {
@@ -161,6 +162,12 @@ func (f *InventoryPortFake) SetError(err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.err = err
+}
+
+func (f *InventoryPortFake) SetReturnError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.returnErr = err
 }
 
 func (f *InventoryPortFake) Reserve(items []stock.Item) error {
@@ -195,8 +202,8 @@ func (f *InventoryPortFake) Return(items []stock.Item) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	if f.err != nil {
-		return f.err
+	if f.returnErr != nil {
+		return f.returnErr
 	}
 
 	for _, item := range items {

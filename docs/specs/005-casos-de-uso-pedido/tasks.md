@@ -41,8 +41,9 @@
 - [x] `TestCriarPedido_03_ES02_SemEstoque` — stock.ErrInsufficientStock, tudo-ou-nada
 - [x] `TestCriarPedido_04_SaveFaila` — Save falha, Return chamado, erro propagado
 - [x] `TestCriarPedido_04b_PedidoInvalido` — NewOrder inválido (PE-01-03), sem Reserve
+- [x] `TestCriarPedido_04c_SaveEReturnFalham` — Save e Return falham, errors.Join(saveErr, returnErr)
 - [x] `TestCriarPedido_05_ProdutoInexistente` — ErrProductNotFound, sem efeito
-- [x] `make check` passa
+- [x] `make check` passa (com -race)
 
 **Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
 

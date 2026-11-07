@@ -80,7 +80,7 @@ func (uc *OrderUseCases) CriarPedido(items []ItemInput) (*order.Order, error) {
 		if err != nil {
 			return nil, err
 		}
-		// PG-04: Product must be available (active)
+		// PR-04: Product must be available (active)
 		if !p.IsAvailable() {
 			return nil, ErrProductUnavailable
 		}
@@ -114,7 +114,11 @@ func (uc *OrderUseCases) CriarPedido(items []ItemInput) (*order.Order, error) {
 	err = uc.orders.Save(o)
 	if err != nil {
 		// Compensation: return the reserved stock
-		_ = uc.stock.Return(stockItems)
+		returnErr := uc.stock.Return(stockItems)
+		if returnErr != nil {
+			// Both Save and Return failed; join errors for visibility
+			return nil, errors.Join(err, returnErr)
+		}
 		return nil, err
 	}
 

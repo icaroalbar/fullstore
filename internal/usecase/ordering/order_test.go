@@ -2,6 +2,7 @@ package ordering
 
 import (
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -284,5 +285,46 @@ func TestCriarPedido_05_ProdutoInexistente(t *testing.T) {
 	}
 	if o != nil {
 		t.Errorf("CriarPedido com erro não deve retornar order")
+	}
+}
+
+func TestCriarPedido_04c_SaveEReturnFalham(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	orderRepoFake.SetError(errors.New("save error"))
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	inventoryFake.SetReturnError(errors.New("return error"))
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+
+	if err == nil {
+		t.Errorf("CriarPedido com Save e Return falhando deve retornar erro")
+	}
+	if o != nil {
+		t.Errorf("CriarPedido com erro não deve retornar order")
+	}
+
+	// Verificar que errors.Join retorna ambos os erros
+	if !errors.Is(err, errors.New("save error")) {
+		// Note: errors.Is não funciona com strings diretas de errors.New,
+		// mas devemos verificar que o erro do Save está no joined error
+		errStr := err.Error()
+		if !strings.Contains(errStr, "save error") {
+			t.Errorf("Erro joinado deve conter 'save error', got %v", errStr)
+		}
+	}
+	if !strings.Contains(err.Error(), "return error") {
+		t.Errorf("Erro joinado deve conter 'return error', got %v", err)
 	}
 }
