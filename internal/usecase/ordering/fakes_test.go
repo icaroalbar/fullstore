@@ -23,9 +23,13 @@ func NewProductCatalogFake() *ProductCatalogFake {
 }
 
 func (f *ProductCatalogFake) SetProduct(p *product.Product) {
+	f.SetProductByID(p.ID(), p)
+}
+
+func (f *ProductCatalogFake) SetProductByID(productID string, p *product.Product) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.products[p.ID()] = p
+	f.products[productID] = p
 }
 
 func (f *ProductCatalogFake) SetError(err error) {

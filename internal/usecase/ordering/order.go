@@ -68,3 +68,55 @@ func NewOrderUseCases(
 		clock:   clock,
 	}
 }
+
+// CriarPedido creates a new order with the given items.
+// Order: 1) fetch products, 2) NewOrder in memory, 3) Reserve stock, 4) Save.
+// If Save fails, Return is called to compensate.
+func (uc *OrderUseCases) CriarPedido(items []ItemInput) (*order.Order, error) {
+	// Phase 1: Fetch products and validate
+	orderItems := make([]order.Item, len(items))
+	for i, item := range items {
+		p, err := uc.catalog.Get(item.ProductID)
+		if err != nil {
+			return nil, err
+		}
+		// PG-04: Product must be available (active)
+		if !p.IsAvailable() {
+			return nil, ErrProductUnavailable
+		}
+		orderItems[i] = order.Item{
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+			Price:     p.Price(),
+		}
+	}
+
+	// Phase 2: Create order in memory (validates PE-01, PE-02, PE-03)
+	o, err := order.NewOrder(orderItems, uc.clock.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	// Phase 3: Reserve stock (tudo-ou-nada; ES-01, ES-02)
+	stockItems := make([]stock.Item, len(orderItems))
+	for i, item := range orderItems {
+		stockItems[i] = stock.Item{
+			ProductID: item.ProductID,
+			Quantity:  item.Quantity,
+		}
+	}
+	err = uc.stock.Reserve(stockItems)
+	if err != nil {
+		return nil, err
+	}
+
+	// Phase 4: Save order. If it fails, compensate by returning stock.
+	err = uc.orders.Save(o)
+	if err != nil {
+		// Compensation: return the reserved stock
+		_ = uc.stock.Return(stockItems)
+		return nil, err
+	}
+
+	return o, nil
+}
