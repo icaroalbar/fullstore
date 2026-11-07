@@ -54,12 +54,12 @@
 **O quê:** Implementar `CancelarPedido(orderID string) error` com Update atômico: `repo.Update(orderID, func(o *order.Order) error { return o.Cancel() })`. Depois: Return. Se Update falha (ErrOrderNotFound, ErrInvalidTransition), não chamar Return.
 
 **Critério de aceite:**
-- [ ] `TestCancelarPedido_06_ES03_CancelaPending` — Update ok, Return chamado, estoque devolvido
-- [ ] `TestCancelarPedido_07_PE05_CancelaPago` — Update retorna ErrInvalidTransition (de o.Cancel), sem Return
-- [ ] `TestCancelarPedido_08_CancelaCancelado` — Update retorna ErrInvalidTransition, sem Return duplicado
-- [ ] `TestCancelarPedido_08b_PedidoInexistente` — Update retorna ErrOrderNotFound, sem Return
-- [ ] `TestCancelarPedido_UpdateFaila` — Update falha, Return não chamado
-- [ ] `make check` passa
+- [x] `TestCancelarPedido_06_ES03_CancelaPending` — Update ok, Return chamado, estoque devolvido
+- [x] `TestCancelarPedido_07_PE05_CancelaPago` — Update retorna ErrInvalidTransition (de o.Cancel), sem Return
+- [x] `TestCancelarPedido_08_CancelaCancelado` — Update retorna ErrInvalidTransition, sem Return duplicado
+- [x] `TestCancelarPedido_08b_PedidoInexistente` — Update retorna ErrOrderNotFound, sem Return
+- [x] `TestCancelarPedido_UpdateFaila` — Update falha, Return não chamado
+- [x] `make check` passa (76.3% coverage)
 
 **Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
 
