@@ -232,3 +232,284 @@ func TestInventory_ES02b_AtomicFail(t *testing.T) {
 		t.Errorf("after failed Reserve, p2 available should still be 10, got %d", available2)
 	}
 }
+
+// T003: Return e Deduct — ES-03, ES-04
+
+func TestInventory_ES03a_ReturnAfterCancel(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 3}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Return([]Item{{ProductID: "p1", Quantity: 3}})
+	if err != nil {
+		t.Errorf("Return(3) should not error, got %v", err)
+	}
+
+	available, _ := inv.Available("p1")
+	if available != 10 {
+		t.Errorf("after Return, available should be 10, got %d", available)
+	}
+
+	reserved, _ := inv.Reserved("p1")
+	if reserved != 0 {
+		t.Errorf("after Return, reserved should be 0, got %d", reserved)
+	}
+}
+
+func TestInventory_ES03b_ReturnAfterExpire(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 3}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Return([]Item{{ProductID: "p1", Quantity: 3}})
+	if err != nil {
+		t.Errorf("Return(3) on expire should not error, got %v", err)
+	}
+
+	available, _ := inv.Available("p1")
+	if available != 10 {
+		t.Errorf("after Return (expire), available should be 10, got %d", available)
+	}
+
+	reserved, _ := inv.Reserved("p1")
+	if reserved != 0 {
+		t.Errorf("after Return (expire), reserved should be 0, got %d", reserved)
+	}
+}
+
+func TestInventory_ReturnInvalidQuantity(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 3}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Return([]Item{{ProductID: "p1", Quantity: 0}})
+	if err != ErrInvalidQuantity {
+		t.Errorf("Return(0) should return ErrInvalidQuantity, got %v", err)
+	}
+}
+
+func TestInventory_ReturnProductNotFound(t *testing.T) {
+	inv := NewInventory()
+	err := inv.Return([]Item{{ProductID: "unknown", Quantity: 1}})
+	if err != ErrProductNotFound {
+		t.Errorf("Return with unknown product should return ErrProductNotFound, got %v", err)
+	}
+}
+
+func TestInventory_ReturnTooMuch(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 3}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Return([]Item{{ProductID: "p1", Quantity: 5}})
+	if err != ErrInvalidOperation {
+		t.Errorf("Return(5) on reserved=3 should return ErrInvalidOperation, got %v", err)
+	}
+
+	available, _ := inv.Available("p1")
+	if available != 7 {
+		t.Errorf("after failed Return, available should still be 7, got %d", available)
+	}
+}
+
+func TestInventory_ReturnProductRepetition(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 5}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Return([]Item{
+		{ProductID: "p1", Quantity: 2},
+		{ProductID: "p1", Quantity: 3},
+	})
+	if err != nil {
+		t.Errorf("Return with repeated product should sum and not error, got %v", err)
+	}
+
+	available, _ := inv.Available("p1")
+	if available != 10 {
+		t.Errorf("after Return(2+3), available should be 10, got %d", available)
+	}
+
+	reserved, _ := inv.Reserved("p1")
+	if reserved != 0 {
+		t.Errorf("after Return(2+3), reserved should be 0, got %d", reserved)
+	}
+}
+
+func TestInventory_ReturnAtomicFail(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish p1 should not error, got %v", err)
+	}
+	if err := inv.Replenish("p2", 10); err != nil {
+		t.Errorf("Replenish p2 should not error, got %v", err)
+	}
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 3}, {ProductID: "p2", Quantity: 3}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Return([]Item{
+		{ProductID: "p1", Quantity: 2},
+		{ProductID: "p2", Quantity: 5},
+	})
+	if err != ErrInvalidOperation {
+		t.Errorf("Return should fail atomically (p2 reserved=3, try return 5), got %v", err)
+	}
+
+	available1, _ := inv.Available("p1")
+	if available1 != 7 {
+		t.Errorf("after failed Return, p1 available should still be 7, got %d", available1)
+	}
+
+	reserved1, _ := inv.Reserved("p1")
+	if reserved1 != 3 {
+		t.Errorf("after failed Return, p1 reserved should still be 3, got %d", reserved1)
+	}
+}
+
+func TestInventory_ES04_DeductAfterPay(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 3}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Deduct([]Item{{ProductID: "p1", Quantity: 3}})
+	if err != nil {
+		t.Errorf("Deduct(3) should not error, got %v", err)
+	}
+
+	available, _ := inv.Available("p1")
+	if available != 7 {
+		t.Errorf("after Deduct, available should still be 7, got %d", available)
+	}
+
+	reserved, _ := inv.Reserved("p1")
+	if reserved != 0 {
+		t.Errorf("after Deduct, reserved should be 0, got %d", reserved)
+	}
+}
+
+func TestInventory_DeductProductRepetition(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 5}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Deduct([]Item{
+		{ProductID: "p1", Quantity: 2},
+		{ProductID: "p1", Quantity: 3},
+	})
+	if err != nil {
+		t.Errorf("Deduct with repeated product should sum and not error, got %v", err)
+	}
+
+	available, _ := inv.Available("p1")
+	if available != 5 {
+		t.Errorf("after Deduct(2+3), available should still be 5, got %d", available)
+	}
+
+	reserved, _ := inv.Reserved("p1")
+	if reserved != 0 {
+		t.Errorf("after Deduct(2+3), reserved should be 0, got %d", reserved)
+	}
+}
+
+func TestInventory_DeductInvalidQuantity(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 3}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Deduct([]Item{{ProductID: "p1", Quantity: 0}})
+	if err != ErrInvalidQuantity {
+		t.Errorf("Deduct(0) should return ErrInvalidQuantity, got %v", err)
+	}
+}
+
+func TestInventory_DeductProductNotFound(t *testing.T) {
+	inv := NewInventory()
+	err := inv.Deduct([]Item{{ProductID: "unknown", Quantity: 1}})
+	if err != ErrProductNotFound {
+		t.Errorf("Deduct with unknown product should return ErrProductNotFound, got %v", err)
+	}
+}
+
+func TestInventory_DeductTooMuch(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish should not error, got %v", err)
+	}
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 3}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Deduct([]Item{{ProductID: "p1", Quantity: 5}})
+	if err != ErrInvalidOperation {
+		t.Errorf("Deduct(5) on reserved=3 should return ErrInvalidOperation, got %v", err)
+	}
+
+	reserved, _ := inv.Reserved("p1")
+	if reserved != 3 {
+		t.Errorf("after failed Deduct, reserved should still be 3, got %d", reserved)
+	}
+}
+
+func TestInventory_DeductAtomicFail(t *testing.T) {
+	inv := NewInventory()
+	if err := inv.Replenish("p1", 10); err != nil {
+		t.Errorf("Replenish p1 should not error, got %v", err)
+	}
+	if err := inv.Replenish("p2", 10); err != nil {
+		t.Errorf("Replenish p2 should not error, got %v", err)
+	}
+	if err := inv.Reserve([]Item{{ProductID: "p1", Quantity: 3}, {ProductID: "p2", Quantity: 3}}); err != nil {
+		t.Errorf("Reserve should not error, got %v", err)
+	}
+
+	err := inv.Deduct([]Item{
+		{ProductID: "p1", Quantity: 2},
+		{ProductID: "p2", Quantity: 5},
+	})
+	if err != ErrInvalidOperation {
+		t.Errorf("Deduct should fail atomically (p2 reserved=3, try deduct 5), got %v", err)
+	}
+
+	reserved1, _ := inv.Reserved("p1")
+	if reserved1 != 3 {
+		t.Errorf("after failed Deduct, p1 reserved should still be 3, got %d", reserved1)
+	}
+}

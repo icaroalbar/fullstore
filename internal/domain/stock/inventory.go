@@ -137,3 +137,98 @@ func (inv *Inventory) Reserve(items []Item) error {
 
 	return nil
 }
+
+// validateAndAggregate validates items and returns a map of aggregated quantities per product.
+// Phase 1: validate all items (quantity > 0, product exists).
+// Returns aggregated quantities if all valid, or an error if any validation fails.
+// This helper is used by both Return and Deduct (all-or-nothing pattern).
+func (inv *Inventory) validateAndAggregate(items []Item) (map[string]int32, error) {
+	if len(items) == 0 {
+		return make(map[string]int32), nil
+	}
+
+	aggregated := make(map[string]int32)
+
+	for _, item := range items {
+		if item.Quantity <= 0 {
+			return nil, ErrInvalidQuantity
+		}
+
+		if _, exists := inv.stocks[item.ProductID]; !exists {
+			return nil, ErrProductNotFound
+		}
+
+		aggregated[item.ProductID] += item.Quantity
+	}
+
+	return aggregated, nil
+}
+
+// Return attempts to return reserved quantities for a list of items.
+// Validates all items before making any changes (all-or-nothing).
+// Phase 1 & 2: validate and aggregate (via helper).
+// Phase 3: validate reserved is enough, then apply (increment available, decrement reserved).
+func (inv *Inventory) Return(items []Item) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	inv.mu.Lock()
+	defer inv.mu.Unlock()
+
+	// Phase 1 & 2: validate and aggregate
+	aggregated, err := inv.validateAndAggregate(items)
+	if err != nil {
+		return err
+	}
+
+	// Phase 3: validate reserved is enough for all products
+	for productID, totalQty := range aggregated {
+		if inv.stocks[productID].reserved < totalQty {
+			return ErrInvalidOperation
+		}
+	}
+
+	// All validations passed; apply changes
+	for productID, totalQty := range aggregated {
+		stock := inv.stocks[productID]
+		stock.available += totalQty
+		stock.reserved -= totalQty
+	}
+
+	return nil
+}
+
+// Deduct attempts to deduct reserved quantities permanently for a list of items.
+// Validates all items before making any changes (all-or-nothing).
+// Phase 1 & 2: validate and aggregate (via helper).
+// Phase 3: validate reserved is enough, then apply (decrement reserved only).
+func (inv *Inventory) Deduct(items []Item) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	inv.mu.Lock()
+	defer inv.mu.Unlock()
+
+	// Phase 1 & 2: validate and aggregate
+	aggregated, err := inv.validateAndAggregate(items)
+	if err != nil {
+		return err
+	}
+
+	// Phase 3: validate reserved is enough for all products
+	for productID, totalQty := range aggregated {
+		if inv.stocks[productID].reserved < totalQty {
+			return ErrInvalidOperation
+		}
+	}
+
+	// All validations passed; apply changes (decrement reserved only)
+	for productID, totalQty := range aggregated {
+		stock := inv.stocks[productID]
+		stock.reserved -= totalQty
+	}
+
+	return nil
+}
