@@ -80,6 +80,14 @@ func TestInventory_GettersUseLock(t *testing.T) {
 
 // T002: Reserve com validação — ES-01, ES-02
 
+func TestInventory_ReserveEmptyList(t *testing.T) {
+	inv := NewInventory()
+	err := inv.Reserve([]Item{})
+	if err != nil {
+		t.Errorf("Reserve with empty list should not error, got %v", err)
+	}
+}
+
 func TestInventory_ES01_ReserveDecrementsAvailable(t *testing.T) {
 	inv := NewInventory()
 	if err := inv.Replenish("p1", 10); err != nil {

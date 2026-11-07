@@ -1,7 +1,21 @@
 // Package stock defines the Inventory aggregate for managing product stock.
 package stock
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
+
+var (
+	// ErrInsufficientStock returned when trying to reserve without enough available quantity.
+	ErrInsufficientStock = errors.New("insufficient stock")
+	// ErrInvalidQuantity returned when quantity is <= 0.
+	ErrInvalidQuantity = errors.New("invalid quantity: must be greater than zero")
+	// ErrProductNotFound returned when product is not found in inventory.
+	ErrProductNotFound = errors.New("product not found in inventory")
+	// ErrInvalidOperation returned when trying to return or deduct more than reserved.
+	ErrInvalidOperation = errors.New("invalid operation: quantity exceeds reserved stock")
+)
 
 // Item represents a product with its quantity in an operation (reserve, return, deduct).
 type Item struct {
@@ -78,8 +92,9 @@ func (inv *Inventory) Reserved(productID string) (int32, error) {
 
 // Reserve attempts to reserve quantities for a list of items.
 // Validates all items before making any changes (all-or-nothing).
-// Phase 1: validate and sum quantities (in local map).
-// Phase 2: apply changes only if all validations pass.
+// Phase 1: validate all items and aggregate quantities per product (in local map).
+// Phase 2: validate availability for all products.
+// Phase 3: apply changes (decrement available, increment reserved) only if phases 1 & 2 pass.
 func (inv *Inventory) Reserve(items []Item) error {
 	if len(items) == 0 {
 		return nil
