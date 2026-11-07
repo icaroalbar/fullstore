@@ -3,7 +3,7 @@
 export PATH := $(shell go env GOPATH)/bin:$(PATH)
 
 # Enquanto o repo não tem arquivos .go, vet, lint e test não têm o que checar.
-HAS_GO := $(shell find . -name '*.go' -not -path './.git/*' -print -quit)
+HAS_GO := $(shell find . -name '*.go' -not -path './.git/*' -not -path './web/*' -print -quit)
 
 fmt:
 	@out="$$(gofmt -l .)"; \
@@ -20,11 +20,10 @@ lint:
 ifeq ($(HAS_GO),)
 	@echo "lint: nenhum arquivo Go ainda"
 else
-	@mkdir -p /tmp/web-backup 2>/dev/null || true; \
-	if [ -d web/node_modules ]; then mv web/node_modules /tmp/web-backup/node_modules-$(date +%s); fi; \
+	@if [ -d web/node_modules ]; then mv web/node_modules web/.node_modules.bak; fi; \
 	golangci-lint run; \
 	RESULT=$$?; \
-	if [ -d /tmp/web-backup/node_modules-* ]; then mv /tmp/web-backup/node_modules-* web/node_modules; fi; \
+	if [ -d web/.node_modules.bak ]; then mv web/.node_modules.bak web/node_modules; fi; \
 	exit $$RESULT
 endif
 
