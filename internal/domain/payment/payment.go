@@ -82,3 +82,31 @@ func (op *OrderPayments) Attempts() []Attempt {
 	copy(result, op.attempts)
 	return result
 }
+
+// RecordAttempt registers a payment attempt with validation.
+// Validates: amount > 0, amount == total, result is valid.
+// All-or-nothing: on validation failure, nothing is registered.
+// Uses lock to ensure atomic write.
+func (op *OrderPayments) RecordAttempt(amount int64, result Status) error {
+	// Phase 1: Validate inputs (before acquiring lock)
+	if amount <= 0 {
+		return ErrInvalidAmount
+	}
+	if amount != op.total {
+		return ErrAmountMismatch
+	}
+	if result != StatusApproved && result != StatusDeclined {
+		return ErrInvalidResult
+	}
+
+	// Phase 2: Acquire lock and register attempt
+	op.mu.Lock()
+	defer op.mu.Unlock()
+
+	op.attempts = append(op.attempts, Attempt{
+		Amount: amount,
+		Status: result,
+	})
+
+	return nil
+}
