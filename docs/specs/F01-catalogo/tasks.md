@@ -16,7 +16,12 @@ npx shadcn@latest add card badge button skeleton alert
 
 Teste antes de cada `add` com `--dry-run`.
 
-Criar em `Makefile` (raiz):
+Atualizar `Makefile` (raiz). Adicionar à linha `.PHONY`:
+```makefile
+.PHONY: web-dev web-lint web-typecheck web-test web-check ...
+```
+
+E adicionar alvos:
 ```makefile
 web-dev:
 	npm --prefix web run dev
@@ -33,25 +38,40 @@ web-typecheck:
 	npm --prefix web run typecheck
 ```
 
-Criar job `web` em `.github/workflows/ci.yml` que roda só quando muda algo em `web/` ou `docs/api/`:
+Criar workflow separado `.github/workflows/web.yml`:
 ```yaml
-web:
-  runs-on: ubuntu-latest
-  if: |
-    github.event_name == 'pull_request' &&
-    (contains(github.event.pull_request.paths, 'web/**') || 
-     contains(github.event.pull_request.paths, 'docs/api/**'))
-  steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-        cache: npm
-        cache-dependency-path: web/package-lock.json
-    - run: npm ci --prefix web
-    - run: npm run lint --prefix web
-    - run: npm run typecheck --prefix web
-    - run: npm run test -- --run --prefix web
+name: Web
+
+on:
+  push:
+    paths:
+      - 'web/**'
+      - 'docs/api/**'
+      - '.github/workflows/web.yml'
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'docs/api/**'
+      - '.github/workflows/web.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - working-directory: web
+        run: npm ci
+      - working-directory: web
+        run: npm run lint
+      - working-directory: web
+        run: npm run typecheck
+      - working-directory: web
+        run: npm test -- --run
 ```
 
 Instalar MSW:
