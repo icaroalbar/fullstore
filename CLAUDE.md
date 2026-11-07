@@ -29,6 +29,10 @@ O que construir está em `docs/prd.md`; como trabalhar está em `docs/specs/READ
 - `make check` (rode antes de dizer que terminou)
 - `make test`, `make lint`, `make run`
 
+## Front end
+
+Stack, estrutura e comandos em [`docs/front-end.md`](docs/front-end.md). Testes do front no formato `it("FE-01b ...")`. Specs de front usam o prefixo F (`docs/specs/F01-...`).
+
 ## Skills
 - `nova-spec`: criar a spec de uma funcionalidade.
 - `planejar-spec`: gerar plano e tarefas de uma spec aprovada.

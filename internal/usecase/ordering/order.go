@@ -3,7 +3,6 @@ package ordering
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/icaroalbar/fullstore/internal/domain/order"
@@ -124,41 +123,4 @@ func (uc *OrderUseCases) CriarPedido(items []ItemInput) (*order.Order, error) {
 	}
 
 	return o, nil
-}
-
-// CancelarPedido cancels an order and returns its stock.
-// Atomic Update first (changes state), then Return (effect outside order) only if Update succeeds.
-// If Return fails, error propagates with order ID so operations can investigate.
-func (uc *OrderUseCases) CancelarPedido(orderID string) error {
-	var items []order.Item
-
-	// Update: read order, call o.Cancel(), all under lock (atomic).
-	// Copy items INSIDE the function passed to Update, before releasing the lock.
-	err := uc.orders.Update(orderID, func(o *order.Order) error {
-		items = o.Items()
-		return o.Cancel()
-	})
-
-	// If Update fails (ErrOrderNotFound, ErrInvalidTransition), return error immediately.
-	// Do NOT call Return (no side effect if order state didn't change).
-	if err != nil {
-		return err
-	}
-
-	// Update succeeded: order was canceled. Now return reserved stock.
-	stockItems := make([]stock.Item, len(items))
-	for i, item := range items {
-		stockItems[i] = stock.Item{
-			ProductID: item.ProductID,
-			Quantity:  item.Quantity,
-		}
-	}
-
-	returnErr := uc.stock.Return(stockItems)
-	if returnErr != nil {
-		// Return failed after successful Cancel: stock is trapped. Propagate error with order ID.
-		return fmt.Errorf("order %s canceled but stock return failed: %w", orderID, returnErr)
-	}
-
-	return nil
 }

@@ -7,7 +7,7 @@ Mudou uma regra? Atualize este arquivo primeiro, depois a spec e o código.
 
 **Usuários.** Cliente (navega no catálogo, faz pedido, paga); Administrador (cadastra produtos e estoque); Gateway de pagamento externo (simulado).
 
-**Fora do escopo.** Frontend, frete, cupons, notas fiscais, login social. Autenticação entra só na etapa 5, no gateway.
+**Fora do escopo.** Frete, cupons, notas fiscais, login social. Autenticação entra só na etapa 5, no gateway.
 
 ## Requisitos funcionais
 
@@ -46,6 +46,7 @@ Cada regra tem um ID que vai para a spec, para o nome do teste e para a mensagem
 | PR-04 | Produto desativado não aparece no catálogo nem entra em pedido | Pedido com produto desativado retorna ErrProductUnavailable |
 | PR-05 | Mudar o preço não altera pedidos já criados | Pedido guarda o preço unitário do momento da compra |
 | PR-06 | Alterar o preço (ChangePrice) aplica a mesma validação da PR-02; só é possível por esse método | ChangePrice(0) retorna ErrInvalidPrice e o preço anterior continua igual |
+| PR-07 | Produto pode ter uma URL de imagem opcional; se informada, precisa ser http(s) válida | URL "abc" retorna ErrInvalidImageURL; produto sem imagem é válido |
 
 ### Pedido
 
@@ -77,6 +78,16 @@ Cada regra tem um ID que vai para a spec, para o nome do teste e para a mensagem
 | PG-03 | Requisição com a mesma chave de idempotência devolve o mesmo resultado | Duas chamadas iguais geram um só registro |
 | PG-04 | Pagamento recusado mantém o pedido pending até expirar | Após recusa, status continua pending |
 | PG-05 | Gateway sem resposta em 3 s conta como falha e pode ser tentado de novo | Teste com gateway falso lento |
+
+### Front end (loja)
+
+| ID | Regra | Critério de aceite |
+| --- | --- | --- |
+| FE-01 | O catálogo exibe os produtos que a API devolve, com nome e preço em BRL formatado a partir de centavos | 123456 centavos aparece como "R$ 1.234,56" |
+| FE-02 | Produto sem unidades disponíveis aparece com o selo "Esgotado" | Produto com 0 disponível mostra "Esgotado" |
+| FE-03 | Toda tela que busca dados mostra estado de carregamento, vazio e erro com "Tentar de novo" | API com erro mostra a mensagem e o botão refaz a busca |
+| FE-04 | O front não decide regra de negócio: totais, status e validações vêm da API | Nenhum teste do front calcula total de pedido |
+| FE-05 | Toda página da loja usa o mesmo layout: cabeçalho fixo com logo e rodapé | Rolar a página mantém o cabeçalho visível |
 
 ## Decisões
 

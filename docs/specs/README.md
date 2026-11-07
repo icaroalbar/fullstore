@@ -19,3 +19,5 @@ docs/specs/NNN-nome/
 Quando algo muda no meio do caminho, atualiza-se a spec primeiro e o código depois. A spec é a fonte da verdade: se o código e a spec divergem, pare e pergunte.
 
 As regras vêm de [`docs/prd.md`](../prd.md). Os modelos estão em [`_templates/`](_templates/), e as skills `nova-spec`, `planejar-spec` e `implementar-tarefa` conduzem cada passo.
+
+Specs do front end usam o prefixo F (`docs/specs/F01-nome/`) para não colidir com a numeração do backend.
