@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"sync"
 	"testing"
 )
 
@@ -286,5 +287,45 @@ func TestOrderPayments_PG04_AttemptsOrder(t *testing.T) {
 
 	if attempts[0].Status != StatusDeclined || attempts[1].Status != StatusDeclined || attempts[2].Status != StatusApproved {
 		t.Errorf("Attempts() should be in order [declined, declined, approved], got %v", attempts)
+	}
+}
+
+// T005: Concorrência (PG-02 with 50 goroutines)
+
+func TestOrderPayments_PG02_RaceCondition(t *testing.T) {
+	op, _ := NewOrderPayments("order-1", 10000)
+
+	successCount := 0
+	failureCount := 0
+	var mu sync.Mutex
+
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			err := op.RecordAttempt(10000, StatusApproved)
+			mu.Lock()
+			switch err {
+			case nil:
+				successCount++
+			case ErrAlreadyPaid:
+				failureCount++
+			}
+			mu.Unlock()
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+
+	if successCount != 1 {
+		t.Errorf("PG02_RaceCondition: expected exactly 1 success, got %d", successCount)
+	}
+	if failureCount != 49 {
+		t.Errorf("PG02_RaceCondition: expected exactly 49 ErrAlreadyPaid, got %d", failureCount)
 	}
 }
