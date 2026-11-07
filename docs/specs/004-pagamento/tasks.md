@@ -30,13 +30,13 @@
 
 ---
 
-## T003: Bloquear segundo aprovado (PG-02, ordem)
+## T003: Bloquear qualquer tentativa após aprovado (PG-02, ordem)
 
-**O quê:** RecordAttempt(amount, approved) retorna ErrAlreadyPaid se já houver um aprovado. Validação: ErrAlreadyPaid primeiro, depois amount == total.
+**O quê:** RecordAttempt retorna ErrAlreadyPaid para qualquer tentativa (aprovada ou recusada) se já há um aprovado. Validação: ErrAlreadyPaid primeiro (em qualquer caso), depois amount == total.
 
 **Critério de aceite:**
 - [ ] `TestOrderPayments_PG02_SecondApprovedFails` — Approve, approve → ErrAlreadyPaid
-- [ ] `TestOrderPayments_PG02_DeclineAfterApproveOK` — Approve, decline → OK (histórico)
+- [ ] `TestOrderPayments_PG02_DeclineAfterApproveFails` — Approve, decline → ErrAlreadyPaid (não OK)
 - [ ] `TestOrderPayments_PG02_OrderValidations` — Aprovado + valor errado → ErrAlreadyPaid (não ErrAmountMismatch)
 
 **Arquivo:** `internal/domain/payment/payment.go` + `payment_test.go`

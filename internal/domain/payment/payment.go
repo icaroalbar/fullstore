@@ -95,12 +95,11 @@ func (op *OrderPayments) RecordAttempt(amount int64, result Status) error {
 	op.mu.Lock()
 	defer op.mu.Unlock()
 
-	// Phase 1: Check if trying to register approved but already has one (PG-02)
-	if result == StatusApproved {
-		for _, attempt := range op.attempts {
-			if attempt.Status == StatusApproved {
-				return ErrAlreadyPaid
-			}
+	// Phase 1: Check if already has approved payment (PG-02)
+	// Any new attempt (approved or declined) is rejected if one is already approved.
+	for _, attempt := range op.attempts {
+		if attempt.Status == StatusApproved {
+			return ErrAlreadyPaid
 		}
 	}
 

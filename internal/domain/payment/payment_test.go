@@ -183,7 +183,7 @@ func TestOrderPayments_PG02_SecondApprovedFails(t *testing.T) {
 	}
 }
 
-func TestOrderPayments_PG02_DeclineAfterApproveOK(t *testing.T) {
+func TestOrderPayments_PG02_DeclineAfterApproveFails(t *testing.T) {
 	op, _ := NewOrderPayments("order-1", 10000)
 
 	err1 := op.RecordAttempt(10000, StatusApproved)
@@ -192,20 +192,18 @@ func TestOrderPayments_PG02_DeclineAfterApproveOK(t *testing.T) {
 	}
 
 	err2 := op.RecordAttempt(10000, StatusDeclined)
-	if err2 != nil {
-		t.Errorf("RecordAttempt(declined) after approved should not error, got %v", err2)
+	if err2 != ErrAlreadyPaid {
+		t.Errorf("RecordAttempt(declined) after approved should return ErrAlreadyPaid, got %v", err2)
 	}
 
+	// Verify only one attempt (approved) was registered
 	attempts := op.Attempts()
-	if len(attempts) != 2 {
-		t.Errorf("after two RecordAttempt calls, Attempts() should have 2 items, got %d", len(attempts))
+	if len(attempts) != 1 {
+		t.Errorf("after failed second RecordAttempt, Attempts() should have 1 item, got %d", len(attempts))
 	}
 
 	if attempts[0].Status != StatusApproved {
-		t.Errorf("first attempt should be approved, got %v", attempts[0].Status)
-	}
-	if attempts[1].Status != StatusDeclined {
-		t.Errorf("second attempt should be declined, got %v", attempts[1].Status)
+		t.Errorf("registered attempt should be approved, got %v", attempts[0].Status)
 	}
 }
 
