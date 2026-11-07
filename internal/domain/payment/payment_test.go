@@ -290,6 +290,50 @@ func TestOrderPayments_PG04_AttemptsOrder(t *testing.T) {
 	}
 }
 
+// T004: Getters thread-safe (PG-04)
+
+func TestOrderPayments_GettersUseLock(t *testing.T) {
+	op, _ := NewOrderPayments("order-1", 10000)
+
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+
+	// Writers: attempt to register payments
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			<-start
+			if idx == 0 {
+				_ = op.RecordAttempt(10000, StatusApproved)
+			} else {
+				_ = op.RecordAttempt(10000, StatusDeclined)
+			}
+		}(i)
+	}
+
+	// Readers: call Approved() and Attempts()
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			op.Approved()
+			op.Attempts()
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+
+	// Verify final state is consistent
+	approved, _ := op.Approved()
+	attempts := op.Attempts()
+	if approved.Status != StatusApproved && len(attempts) > 0 {
+		t.Errorf("Final state inconsistent: approved=%v, attempts count=%d", approved.Status, len(attempts))
+	}
+}
+
 // T005: Concorrência (PG-02 with 50 goroutines)
 
 func TestOrderPayments_PG02_RaceCondition(t *testing.T) {

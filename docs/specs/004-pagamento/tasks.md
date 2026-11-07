@@ -48,9 +48,9 @@
 **O quê:** Approved() retorna snapshot do primeiro attempt aprovado. Attempts() retorna slice em ordem.
 
 **Critério de aceite:**
-- [ ] `TestOrderPayments_PG04_ApprovedGetter` — Approve, decline → Approved() retorna só o aprovado
-- [ ] `TestOrderPayments_PG04_AttemptsOrder` — Decline, decline, approve → Attempts() em ordem
-- [ ] `TestOrderPayments_GettersUseLock` — Getters adquirem lock (verificar -race)
+- [x] `TestOrderPayments_PG04_ApprovedGetter` — Approve, decline → Approved() retorna só o aprovado
+- [x] `TestOrderPayments_PG04_AttemptsOrder` — Decline, decline, approve → Attempts() em ordem
+- [x] `TestOrderPayments_GettersUseLock` — Getters adquirem lock (verificar -race)
 
 **Arquivo:** `internal/domain/payment/payment.go` + `payment_test.go`
 
@@ -61,8 +61,8 @@
 **O quê:** Teste com 50 goroutines tentando approvar 1x cada, sincronizadas por canal; exatamente 1 sucesso, 49 ErrAlreadyPaid.
 
 **Critério de aceite:**
-- [ ] `TestOrderPayments_PG02_RaceCondition` — 50 goroutines (canal start), 1 sucesso, 49 falhas
-- [ ] `go test -race -count=50` passa sem data races
+- [x] `TestOrderPayments_PG02_RaceCondition` — 50 goroutines (canal start), 1 sucesso, 49 falhas
+- [x] `go test -race -count=50` passa sem data races
 
 **Arquivo:** `internal/domain/payment/payment_test.go`
 
