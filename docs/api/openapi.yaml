@@ -1,0 +1,32 @@
+openapi: 3.1.0
+info:
+  title: FullStore API
+  version: 0.1.0
+paths:
+  /products:
+    get:
+      summary: Lista produtos ativos do catálogo (RF-02, PR-04)
+      responses:
+        "200":
+          description: Produtos ativos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products]
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CatalogProduct"
+components:
+  schemas:
+    CatalogProduct:
+      type: object
+      required: [id, name, price_cents, available]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 3, maxLength: 100 }
+        price_cents: { type: integer, format: int64, minimum: 1 }
+        available: { type: integer, minimum: 0, description: "Unidades disponíveis (Inventory)" }
+        image_url: { type: string, format: uri, description: "Opcional; ainda não existe no domínio (regra PR-07, backend depois)" }
