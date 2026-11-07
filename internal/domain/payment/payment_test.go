@@ -160,3 +160,72 @@ func TestOrderPayments_OnlyDeclinedNoApproved(t *testing.T) {
 		t.Errorf("Approved() should return zero-value when no approved, got %v", approved)
 	}
 }
+
+// T003: Bloquear segundo aprovado (PG-02, ordem de validações)
+
+func TestOrderPayments_PG02_SecondApprovedFails(t *testing.T) {
+	op, _ := NewOrderPayments("order-1", 10000)
+
+	err1 := op.RecordAttempt(10000, StatusApproved)
+	if err1 != nil {
+		t.Errorf("first RecordAttempt(approved) should not error, got %v", err1)
+	}
+
+	err2 := op.RecordAttempt(10000, StatusApproved)
+	if err2 != ErrAlreadyPaid {
+		t.Errorf("second RecordAttempt(approved) should return ErrAlreadyPaid, got %v", err2)
+	}
+
+	// Verify only one approved attempt was registered
+	attempts := op.Attempts()
+	if len(attempts) != 1 {
+		t.Errorf("after failed second RecordAttempt, Attempts() should have 1 item, got %d", len(attempts))
+	}
+}
+
+func TestOrderPayments_PG02_DeclineAfterApproveOK(t *testing.T) {
+	op, _ := NewOrderPayments("order-1", 10000)
+
+	err1 := op.RecordAttempt(10000, StatusApproved)
+	if err1 != nil {
+		t.Errorf("RecordAttempt(approved) should not error, got %v", err1)
+	}
+
+	err2 := op.RecordAttempt(10000, StatusDeclined)
+	if err2 != nil {
+		t.Errorf("RecordAttempt(declined) after approved should not error, got %v", err2)
+	}
+
+	attempts := op.Attempts()
+	if len(attempts) != 2 {
+		t.Errorf("after two RecordAttempt calls, Attempts() should have 2 items, got %d", len(attempts))
+	}
+
+	if attempts[0].Status != StatusApproved {
+		t.Errorf("first attempt should be approved, got %v", attempts[0].Status)
+	}
+	if attempts[1].Status != StatusDeclined {
+		t.Errorf("second attempt should be declined, got %v", attempts[1].Status)
+	}
+}
+
+func TestOrderPayments_PG02_OrderValidations(t *testing.T) {
+	op, _ := NewOrderPayments("order-1", 10000)
+
+	// Register first as approved
+	if err := op.RecordAttempt(10000, StatusApproved); err != nil {
+		t.Errorf("first RecordAttempt should not error, got %v", err)
+	}
+
+	// Try second with wrong amount (should fail with ErrAlreadyPaid, not ErrAmountMismatch)
+	err := op.RecordAttempt(9900, StatusApproved)
+	if err != ErrAlreadyPaid {
+		t.Errorf("RecordAttempt with approved already + wrong amount should return ErrAlreadyPaid (before validating amount), got %v", err)
+	}
+
+	// Verify nothing was added
+	attempts := op.Attempts()
+	if len(attempts) != 1 {
+		t.Errorf("after failed second RecordAttempt, Attempts() should still have 1 item, got %d", len(attempts))
+	}
+}
