@@ -17,7 +17,7 @@ describe("Catalog", () => {
 
   it("FE-03a exibe indicador de carregamento enquanto busca", async () => {
     render(<Catalog />);
-    const skeletons = screen.getAllByRole("presentation");
+    const skeletons = document.querySelectorAll('[data-slot="skeleton"]');
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
