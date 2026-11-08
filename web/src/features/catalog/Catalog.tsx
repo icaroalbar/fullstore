@@ -11,7 +11,7 @@ export function Catalog() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProducts = async () => {
+  const loadProducts = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -21,16 +21,16 @@ export function Catalog() {
       } else {
         setProducts(data);
       }
-    } catch (err) {
+    } catch {
       setError("Não foi possível carregar os produtos");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [loadProducts]);
 
   const prefersReducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
