@@ -3,6 +3,7 @@ package ordering
 import (
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -859,5 +860,100 @@ func TestExpirarPedidos_UpdateFalhaComErroReal(t *testing.T) {
 	// Verificar que nenhum Return foi chamado (Update falhou)
 	if inventoryFake.GetStock("prod1") != 195 {
 		t.Errorf("Estoque não deve ter devolvido (Update falhou); got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+// T007: Concorrência — dois cancelamentos simultâneos (ES-05 pattern)
+
+func TestCancelarPedido_RaceCondition_DoisCancelamentosSimultaneos(t *testing.T) {
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar um pedido pending
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+	if err != nil {
+		t.Fatalf("CriarPedido failed: %v", err)
+	}
+	orderID := o.ID()
+
+	// Estoque deve estar reservado: 100 - 5 = 95
+	if inventoryFake.GetStock("prod1") != 95 {
+		t.Fatalf("Stock deve estar em 95, got %d", inventoryFake.GetStock("prod1"))
+	}
+
+	// Disparar 50 goroutines para cancelar o MESMO pedido simultaneamente
+	numGoroutines := 50
+	results := make([]error, numGoroutines)
+	var resultsMu sync.Mutex
+
+	// Canal para sincronizar o início de todas as goroutines
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			// Esperar o sinal para começar
+			<-start
+			// Chamar CancelarPedido
+			err := uc.CancelarPedido(orderID)
+			// Armazenar resultado com lock
+			resultsMu.Lock()
+			results[idx] = err
+			resultsMu.Unlock()
+		}(i)
+	}
+
+	// Fechar o canal para largar todas as goroutines ao mesmo tempo
+	close(start)
+
+	// Esperar todas as goroutines terminarem
+	wg.Wait()
+
+	// Contar sucessos e falhas
+	var successCount int
+	var invalidTransitionCount int
+
+	for i, err := range results {
+		if err == nil {
+			successCount++
+		} else if errors.Is(err, order.ErrInvalidTransition) {
+			invalidTransitionCount++
+		} else {
+			t.Errorf("Resultado [%d]: erro inesperado %v", i, err)
+		}
+	}
+
+	// Validar: exatamente 1 sucesso, 49 ErrInvalidTransition
+	if successCount != 1 {
+		t.Errorf("Esperado exatamente 1 sucesso, got %d", successCount)
+	}
+	if invalidTransitionCount != numGoroutines-1 {
+		t.Errorf("Esperado %d ErrInvalidTransition, got %d", numGoroutines-1, invalidTransitionCount)
+	}
+
+	// Validar estoque: devolvido UMA vez (100 = 95 + 5)
+	finalStock := inventoryFake.GetStock("prod1")
+	if finalStock != 100 {
+		t.Errorf("Estoque deve estar em 100 (devolvido 1 vez), got %d", finalStock)
+	}
+
+	// Validar status: pedido deve estar canceled
+	recovered, _ := orderRepoFake.GetForTest(orderID)
+	if recovered.Status() != order.StatusCanceled {
+		t.Errorf("Pedido deve estar canceled, got %v", recovered.Status())
 	}
 }
