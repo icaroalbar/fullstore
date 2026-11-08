@@ -29,8 +29,8 @@ export function Catalog() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    loadProducts(); // NOSONAR - intentional: init on mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+    loadProducts(); // only on mount
   }, []);
 
   const prefersReducedMotion = window.matchMedia(
