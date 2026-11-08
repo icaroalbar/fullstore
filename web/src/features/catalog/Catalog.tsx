@@ -33,9 +33,9 @@ export function Catalog() {
     loadProducts(); // only on mount
   }, []);
 
-  const prefersReducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
+  const prefersReducedMotion = typeof window !== "undefined" && window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
