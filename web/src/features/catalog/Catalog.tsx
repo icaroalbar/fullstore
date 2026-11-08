@@ -29,8 +29,9 @@ export function Catalog() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     loadProducts();
-  }, [loadProducts]);
+  }, []);
 
   const prefersReducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
