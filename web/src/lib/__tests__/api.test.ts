@@ -32,6 +32,13 @@ describe("api", () => {
   });
 
   it("FE-03c erro na API (500) lança erro em fetchProducts", async () => {
+    server.use(
+      http.get("*/api/products", () => new HttpResponse(null, { status: 500 }))
+    );
+    await expect(fetchProducts()).rejects.toThrow();
+  });
+
+  it("erro de rede (sem resposta) lança erro", async () => {
     server.use(http.get("*/api/products", () => HttpResponse.error()));
     await expect(fetchProducts()).rejects.toThrow();
   });

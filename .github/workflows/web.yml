@@ -2,6 +2,9 @@ name: Web
 
 on:
   push:
+    branches:
+      - develop
+      - main
     paths:
       - 'web/**'
       - 'docs/api/**'
@@ -30,3 +33,5 @@ jobs:
         run: npm run typecheck
       - working-directory: web
         run: npm test -- --run
+      - working-directory: web
+        run: npm run build
