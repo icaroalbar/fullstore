@@ -327,6 +327,194 @@ func TestCriarPedido_04c_SaveEReturnFalham(t *testing.T) {
 	}
 }
 
+// T004: CancelarPedido com Update atômico (cenários 06-08b)
+
+func TestCancelarPedido_06_ES03_CancelaPending(t *testing.T) {
+	// Setup: pedido pending com estoque reservado
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar pedido (CriarPedido)
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+	if err != nil {
+		t.Fatalf("CriarPedido failed: %v", err)
+	}
+	orderID := o.ID()
+
+	// Estoque deve estar reservado: 100 - 5 = 95
+	if inventoryFake.GetStock("prod1") != 95 {
+		t.Fatalf("Stock deve estar reservado em 95, got %d", inventoryFake.GetStock("prod1"))
+	}
+
+	// Cancelar pedido
+	err = uc.CancelarPedido(orderID)
+
+	if err != nil {
+		t.Errorf("CancelarPedido com pending deve suceder, got %v", err)
+	}
+
+	// Verificar que estoque foi devolvido: 95 + 5 = 100
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Errorf("Estoque deve ter sido devolvido; esperado 100, got %d", inventoryFake.GetStock("prod1"))
+	}
+
+	// Verificar status do pedido
+	recovered, _ := orderRepoFake.GetForTest(orderID)
+	if recovered.Status() != order.StatusCanceled {
+		t.Errorf("Pedido deve estar canceled, got %v", recovered.Status())
+	}
+}
+
+func TestCancelarPedido_07_PE05_CancelaPago(t *testing.T) {
+	// Setup: pedido paid
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar pedido
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+	if err != nil {
+		t.Fatalf("CriarPedido failed: %v", err)
+	}
+	orderID := o.ID()
+
+	// Simular transição para paid via Update (apenas para teste)
+	_ = orderRepoFake.Update(orderID, func(ord *order.Order) error {
+		return ord.Pay(clockFake.Now())
+	})
+
+	// Estoque deve estar reservado: 100 - 5 = 95
+	stockBefore := inventoryFake.GetStock("prod1")
+
+	// Tentar cancelar pedido pago
+	err = uc.CancelarPedido(orderID)
+
+	if err != order.ErrInvalidTransition {
+		t.Errorf("CancelarPedido com paid deve retornar ErrInvalidTransition, got %v", err)
+	}
+
+	// Verificar que estoque NÃO foi devolvido
+	if inventoryFake.GetStock("prod1") != stockBefore {
+		t.Errorf("Estoque não deve ter sido alterado, esperado %d, got %d", stockBefore, inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestCancelarPedido_08_CancelaCancelado(t *testing.T) {
+	// Setup: pedido canceled
+	catalogFake := NewProductCatalogFake()
+	p1, _ := product.NewProduct("prod1", 10000, time.Now())
+	if err := p1.Activate(); err != nil {
+		t.Fatalf("Activate should not fail: %v", err)
+	}
+	catalogFake.SetProductByID("prod1", p1)
+
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Criar pedido
+	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
+	o, err := uc.CriarPedido(items)
+	if err != nil {
+		t.Fatalf("CriarPedido failed: %v", err)
+	}
+	orderID := o.ID()
+
+	// Cancelar uma vez
+	err = uc.CancelarPedido(orderID)
+	if err != nil {
+		t.Fatalf("Primeiro CancelarPedido falhou: %v", err)
+	}
+
+	// Estoque deve estar em 100 (devolvido)
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Fatalf("Estoque deve estar em 100 após primeiro cancelamento, got %d", inventoryFake.GetStock("prod1"))
+	}
+
+	// Tentar cancelar de novo
+	err = uc.CancelarPedido(orderID)
+
+	if err != order.ErrInvalidTransition {
+		t.Errorf("CancelarPedido em canceled deve retornar ErrInvalidTransition, got %v", err)
+	}
+
+	// Verificar que estoque não foi devolvido novamente (teria voltado a 105)
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Errorf("Estoque não deve ser devolvido de novo; esperado 100, got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestCancelarPedido_08b_PedidoInexistente(t *testing.T) {
+	orderRepoFake := NewOrderRepositoryFake()
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	catalogFake := NewProductCatalogFake()
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Tentar cancelar pedido inexistente
+	err := uc.CancelarPedido("pedido-inexistente")
+
+	if err != ErrOrderNotFound {
+		t.Errorf("CancelarPedido com pedido inexistente deve retornar ErrOrderNotFound, got %v", err)
+	}
+
+	// Verificar que estoque não foi alterado
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Errorf("Estoque não deve ter sido alterado, got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
+func TestCancelarPedido_UpdateFaila(t *testing.T) {
+	orderRepoFake := NewOrderRepositoryFake()
+	orderRepoFake.SetError(errors.New("update error"))
+	inventoryFake := NewInventoryPortFake()
+	inventoryFake.SetStock("prod1", 100)
+	clockFake := NewClockFake(time.Now())
+
+	catalogFake := NewProductCatalogFake()
+	uc := NewOrderUseCases(catalogFake, orderRepoFake, inventoryFake, clockFake)
+
+	// Tentar cancelar quando Update falha
+	err := uc.CancelarPedido("any-order-id")
+
+	if err == nil {
+		t.Errorf("CancelarPedido com Update falhando deve retornar erro")
+	}
+
+	// Verificar que Return não foi chamado
+	if inventoryFake.GetStock("prod1") != 100 {
+		t.Errorf("Estoque não deve ter sido alterado (Return não chamado), got %d", inventoryFake.GetStock("prod1"))
+	}
+}
+
 // T005: ExpirarPedidos com Update + clock (cenários 09-10)
 
 func TestExpirarPedidos_09_PE06_ExpiraAntigosDevolvePending(t *testing.T) {
@@ -643,17 +831,29 @@ func TestExpirarPedidos_UpdateFalhaComErroReal(t *testing.T) {
 	// Criar um pedido antigo
 	clockFake.SetNow(time.Now().Add(-31 * time.Minute))
 	items := []ItemInput{{ProductID: "prod1", Quantity: 5}}
-	_, _ = uc.CriarPedido(items)
+	oldOrder, _ := uc.CriarPedido(items)
+	oldOrderID := oldOrder.ID()
 
-	// Voltar ao relógio atual e configurar Update para falhar
+	// Voltar ao relógio atual e configurar Update para falhar com erro específico
 	clockFake.SetNow(time.Now())
-	orderRepoFake.SetError(errors.New("update error"))
+	updateErr := errors.New("update error")
+	orderRepoFake.SetUpdateError(updateErr)
 
 	// Rodar expiração
 	err := uc.ExpirarPedidos()
 
 	if err == nil {
 		t.Errorf("ExpirarPedidos com Update falhando deve retornar erro")
+	}
+
+	// Verificar que o erro contém o ID do pedido antigo
+	if !strings.Contains(err.Error(), oldOrderID) {
+		t.Errorf("Erro deve conter ID do pedido %s, got %v", oldOrderID, err)
+	}
+
+	// Verificar que errors.Is encontra o erro original dentro da acumulação
+	if !errors.Is(err, updateErr) {
+		t.Errorf("Erro acumulado deve conter erro original, got %v", err)
 	}
 
 	// Verificar que nenhum Return foi chamado (Update falhou)

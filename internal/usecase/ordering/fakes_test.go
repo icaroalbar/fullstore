@@ -53,9 +53,10 @@ func (f *ProductCatalogFake) Get(productID string) (*product.Product, error) {
 
 // OrderRepositoryFake implements OrderRepository for testing
 type OrderRepositoryFake struct {
-	orders map[string]*order.Order
-	err    error
-	mu     sync.Mutex
+	orders    map[string]*order.Order
+	err       error
+	updateErr error
+	mu        sync.Mutex
 }
 
 func NewOrderRepositoryFake() *OrderRepositoryFake {
@@ -68,6 +69,12 @@ func (f *OrderRepositoryFake) SetError(err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.err = err
+}
+
+func (f *OrderRepositoryFake) SetUpdateError(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.updateErr = err
 }
 
 func (f *OrderRepositoryFake) Save(o *order.Order) error {
@@ -92,6 +99,10 @@ func (f *OrderRepositoryFake) Update(orderID string, fn func(*order.Order) error
 
 	if f.err != nil {
 		return f.err
+	}
+
+	if f.updateErr != nil {
+		return f.updateErr
 	}
 
 	o, ok := f.orders[orderID]
