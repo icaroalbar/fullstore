@@ -45,10 +45,13 @@ web-dev:
 web-test:
 	npm --prefix web test -- --run
 
-web-check: web-lint web-typecheck web-test
+web-check: web-lint web-typecheck web-test web-build
 
 web-lint:
 	npm --prefix web run lint
 
 web-typecheck:
 	npm --prefix web run typecheck
+
+web-build:
+	npm --prefix web run build
