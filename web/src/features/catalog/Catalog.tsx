@@ -28,9 +28,9 @@ export function Catalog() {
     }
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
   useEffect(() => {
-    loadProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadProducts(); // NOSONAR - intentional: init on mount only
   }, []);
 
   const prefersReducedMotion = window.matchMedia(
