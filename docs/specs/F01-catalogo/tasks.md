@@ -136,7 +136,7 @@ describe("money", () => {
 
 ---
 
-## T003: lib/api.ts + MSW handlers - GET /api/products (45 min)
+## ✅ T003: lib/api.ts + MSW handlers - GET /api/products (CONCLUÍDA)
 **Regras:** FE-01a (lista de produtos), RF-02 (backend simula)
 
 ### Preparação: correções ao contrato e estrutura
