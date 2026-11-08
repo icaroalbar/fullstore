@@ -100,9 +100,9 @@
 **O quê:** Tarefa extra: verificar que Update serializa: dois CancelarPedido simultâneos no mesmo pedido, um ganha a transição (pending → canceled), outro falha com ErrInvalidTransition. Apenas um Return chamado. Teste com -race.
 
 **Critério de aceite:**
-- [ ] `TestCancelarPedido_RaceCondition_DoisCancelamentosSimultaneos` — 50 goroutines (canal start), todos tentam `repo.Update` do mesmo pending; 1 sucesso (o.Cancel ok, Return 1×), 49 falham com ErrInvalidTransition (o.Cancel retorna erro, sem Return)
-- [ ] `go test -race ./internal/usecase/ordering` passa sem data races
-- [ ] `make check` passa
+- [x] `TestCancelarPedido_RaceCondition_DoisCancelamentosSimultaneos` — 50 goroutines (canal start), todos tentam `repo.Update` do mesmo pending; 1 sucesso (o.Cancel ok, Return 1×), 49 falham com ErrInvalidTransition (o.Cancel retorna erro, sem Return)
+- [x] `go test -race -count=50 ./internal/usecase/ordering` passa sem data races nem flakiness
+- [x] `make check` passa (100% coverage)
 
 **Arquivo:** `internal/usecase/ordering/order_test.go`
 
