@@ -59,7 +59,7 @@
 - [x] `TestCancelarPedido_08_CancelaCancelado` — Update retorna ErrInvalidTransition, sem Return duplicado
 - [x] `TestCancelarPedido_08b_PedidoInexistente` — Update retorna ErrOrderNotFound, sem Return
 - [x] `TestCancelarPedido_UpdateFaila` — Update falha, Return não chamado
-- [x] `make check` passa (93.6% coverage)
+- [x] `make check` passa (100% coverage, 6 testes CancelarPedido)
 
 **Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
 
@@ -74,7 +74,9 @@
 - [x] `TestExpirarPedidos_09b_NaoExpiraJaCancelado` — já cancelado → ErrInvalidTransition (de o.Expire), sem Return
 - [x] `TestExpirarPedidos_10_ReturnFailaAcumulaErro` — Return falha, erro acumulado com ID, demais processados, errors.Join propagado
 - [x] `TestExpirarPedidos_MistoNovoEAntigo` — pendidos novos + antigos; antigos expiram+devolvem, novos ignorados, erro vazio (sem erros reais)
-- [x] `make check` passa (93.6% coverage)
+- [x] `TestExpirarPedidos_ListPendingFalha` — ListPending falha, nenhum Return chamado
+- [x] `TestExpirarPedidos_UpdateFalhaComErroReal` — Update falha com erro real, acumula com ID, errors.Is acha erro original, demais processados
+- [x] `make check` passa (100% coverage, variável `pendentes` em vez de `pendidos`)
 
 **Arquivo:** `internal/usecase/ordering/order.go` + `order_test.go`
 
