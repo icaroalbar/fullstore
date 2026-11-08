@@ -136,8 +136,35 @@ describe("money", () => {
 
 ---
 
-## T003: lib/api.ts + MSW handlers - GET /api/products (45 min)
+## ✅ T003: lib/api.ts + MSW handlers - GET /api/products (CONCLUÍDA)
 **Regras:** FE-01a (lista de produtos), RF-02 (backend simula)
+
+### Preparação: correções ao contrato e estrutura
+
+1. **Atualizar `docs/api/openapi.yaml`** para documentar a base:
+```yaml
+servers:
+  - url: /api
+```
+No bloco `paths`, a rota fica: `GET /products` (resolvida para `/api/products`).
+
+2. **Criar SVGs simples** em `web/public/mock/` (em vez de `via.placeholder.com`):
+   - `web/public/mock/laptop.svg`: SVG simples (fundo cinza, texto "Laptop")
+   - `web/public/mock/teclado.svg`: SVG simples (fundo cinza, texto "Teclado")
+
+3. **Atualizar `vitest.config.ts`** (não sobrescrever; já tem setupFiles, alias @, passWithNoTests da T001):
+   ```typescript
+   // No bloco test: {
+   //   env: "test.env"  // Carrega variáveis para Node (VITE_API_URL etc)
+   // }
+   ```
+   Criar `web/test.env`:
+   ```
+   VITE_API_URL=http://localhost:3000/api
+   ```
+   (O `.env.local` não vai para git; a CI usaria `test.env` direto.)
+
+### Implementação
 
 Criar `web/src/lib/api.ts`:
 
@@ -151,18 +178,14 @@ export interface CatalogProduct {
 }
 
 export async function fetchProducts(): Promise<CatalogProduct[]> {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}/products`);
+  const API_URL = import.meta.env.VITE_API_URL ?? "/api";
+  const response = await fetch(`${API_URL}/products`);
   if (!response.ok) {
     throw new Error("Failed to fetch products");
   }
   const data = await response.json();
   return data.products;
 }
-```
-
-Criar `web/.env.local`:
-```
-VITE_API_URL=http://localhost:3000/api
 ```
 
 Criar `web/src/mocks/handlers.ts`:
@@ -177,7 +200,7 @@ const mockProducts: CatalogProduct[] = [
     name: "Laptop",
     price_cents: 299900,
     available: 5,
-    image_url: "https://via.placeholder.com/300x300?text=Laptop",
+    image_url: "/mock/laptop.svg",
   },
   {
     id: "223e4567-e89b-12d3-a456-426614174001",
@@ -190,70 +213,84 @@ const mockProducts: CatalogProduct[] = [
     name: "Teclado",
     price_cents: 12990,
     available: 10,
-    image_url: "https://via.placeholder.com/300x300?text=Teclado",
+    image_url: "/mock/teclado.svg",
   },
 ];
 
 export const handlers = [
-  http.get("/api/products", () => {
+  http.get("*/api/products", () => {
     return HttpResponse.json({ products: mockProducts });
   }),
 ];
 ```
 
-Criar `web/src/mocks/server.ts`:
+`web/src/mocks/server.ts` e `web/src/mocks/setup.ts` já existem da T001 (não modificar).
+
+Criar `web/src/mocks/browser.ts` (para o navegador, `make web-dev`):
 
 ```typescript
-import { setupServer } from "msw/node";
+import { setupWorker } from "msw/browser";
 import { handlers } from "./handlers";
 
-export const server = setupServer(...handlers);
-```
-
-Atualizar `web/vitest.config.ts` (ou criar se não existir):
-
-```typescript
-import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
-
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    globals: true,
-    environment: "jsdom",
-    setupFiles: ["./src/mocks/setup.ts"],
-  },
-});
-```
-
-Criar `web/src/mocks/setup.ts`:
-
-```typescript
-import { beforeAll, afterEach, afterAll } from "vitest";
-import { server } from "./server";
-
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+export const worker = setupWorker(...handlers);
 ```
 
 Criar `web/src/lib/__tests__/api.test.ts`:
 
 ```typescript
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { fetchProducts } from "../api";
+import { server } from "../mocks/server";
+import { http, HttpResponse } from "msw";
 
 describe("api", () => {
-  it("FE-01a busca 3 produtos da API", async () => {
+  it("FE-01a busca 3 produtos (nomes, preços, Mouse esgotado sem imagem)", async () => {
     const products = await fetchProducts();
     expect(products).toHaveLength(3);
-    expect(products[0].name).toBe("Laptop");
-    expect(products[0].price_cents).toBe(299900);
+    expect(products[0]).toMatchObject({
+      name: "Laptop",
+      price_cents: 299900,
+      available: 5,
+      image_url: "/mock/laptop.svg",
+    });
+    expect(products[1]).toMatchObject({
+      name: "Mouse",
+      price_cents: 4990,
+      available: 0,
+      image_url: undefined,
+    });
+  });
+
+  it("FE-01a respeitá contrato: todo produto tem id, name, price_cents, available", async () => {
+    const products = await fetchProducts();
+    products.forEach((p) => {
+      expect(p.id).toBeDefined();
+      expect(p.name).toBeDefined();
+      expect(p.price_cents).toBeDefined();
+      expect(p.available).toBeDefined();
+    });
+  });
+
+  it("FE-03c erro na API (500) lança erro em fetchProducts", async () => {
+    server.use(
+      http.get("*/api/products", () => HttpResponse.error())
+    );
+    await expect(fetchProducts()).rejects.toThrow();
   });
 });
 ```
 
-**Teste que prova:** `npm run test -- --run` passa com todos os testes (incluindo money.test.ts).
+Atualizar `web/src/main.tsx` para iniciar MSW no navegador:
+
+```typescript
+// Antes de render
+if (import.meta.env.DEV) {
+  const { worker } = await import("./mocks/browser");
+  await worker.start();
+}
+```
+
+**Teste que prova:** `npm run test -- --run` passa com 3 testes novos (FE-01a, contrato, erro). `make web-dev` abre sem erro no console (verificar output do Vite: "MSW worker started" ou similar).
 
 ---
 

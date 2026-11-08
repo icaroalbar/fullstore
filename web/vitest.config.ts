@@ -9,6 +9,9 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/mocks/setup.ts"],
     passWithNoTests: true,
+    env: {
+      VITE_API_URL: "http://localhost:3000/api",
+    },
   },
   resolve: {
     alias: {
