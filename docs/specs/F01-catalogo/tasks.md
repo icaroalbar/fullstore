@@ -294,7 +294,7 @@ if (import.meta.env.DEV) {
 
 ---
 
-## T004: MainLayout - cabeçalho fixo + rodapé (30 min)
+## ✅ T004: MainLayout - cabeçalho fixo + rodapé (CONCLUÍDA)
 **Regras:** FE-05a, FE-05b
 
 Criar `web/src/layouts/MainLayout.tsx`:
